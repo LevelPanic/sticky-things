@@ -75,7 +75,7 @@ Three Swift modules, each with its own tests:
 | [docs/TESTING.md](docs/TESTING.md) | Unit tests, design lint, the UI self-test, snapshots, and the manual drag matrix |
 
 ```bash
-make test        # 28 unit tests (core, design system, app logic)
+make test        # 29 unit tests (core, design system, app logic)
 make selftest    # drives the real panel through accessibility (throwaway library)
 make snapshots   # renders every screen to build/snapshots
 ```

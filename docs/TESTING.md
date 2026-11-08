@@ -48,6 +48,7 @@ These cover everything about capture and storage, using private pasteboards (`NS
 * paste rules (save instantly vs. paste inline)
 * arrow keys moving away from the corner in both layouts
 * one-click copy selecting and confirming
+* hover moving between cards (leaving one never clears the next)
 * inline edit + undo
 * delete selecting a neighbor + undo
 * ⌘1 for pinned items
@@ -59,7 +60,8 @@ These cover everything about capture and storage, using private pasteboards (`NS
 * **How it works:** it opens the *real* panel and drives it through the app's own accessibility tree, as VoiceOver does. That works in-process with no permissions.
   * It presses buttons, performs each card's named actions and types into the real text views.
   * Synthesized mouse events don't reach SwiftUI controls, so accessibility is the dependable route. Every action being reachable this way also means it works for VoiceOver users.
-* **What it checks (25 checks):**
+* **What it checks (26 checks):**
+  * the panel window's corners are fully transparent (it captures its own window, which needs no permission)
   * the composer, not search, has focus on open
   * Return saves and ⌘V saves anything
   * one click copies and keeps the card selected
@@ -69,7 +71,7 @@ These cover everything about capture and storage, using private pasteboards (`NS
   * ↑ / Return
   * Quick Look with the panel staying open
   * two-step Esc
-* **What it can't check:** real pointer *hover* and drags from other apps (they need real input events). Those are in the manual pass below.
+* **What it can't check:** real pointer *hover* and drags from other apps. SwiftUI reads the real cursor position, so synthetic mouse moves don't produce hover, and posting real events needs permission. Those are in the manual pass below.
 
 ## 5. Snapshots (`StickyThings --snapshot <folder>`)
 
@@ -88,6 +90,8 @@ These render the panel (light and dark, full and empty), every onboarding step, 
 * the screenshot thumbnail
 * a 1Password copy (should show blurred)
 
-**Pointer.** Hover reveals the buttons. The first click works even right after opening. Right-click shows the menu.
+**Pointer.** Hover reveals the buttons, and they stay while the pointer rests on them. The first click works even right after opening. Right-click shows the menu.
+
+**Look.** The panel's corners are round on light and dark backgrounds, with no square outline.
 
 **Plus** the design checklist in [DESIGN.md](DESIGN.md).

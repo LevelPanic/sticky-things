@@ -78,6 +78,17 @@ final class PanelModelTests: XCTestCase {
         XCTAssertEqual(model.selection, item.id)
     }
 
+    func testHoverMovingBetweenCards() {
+        let a = UUID(), b = UUID()
+        model.setHovered(a, true)
+        XCTAssertEqual(model.hoveredID, a)
+        model.setHovered(b, true)   // SwiftUI may report entering B before leaving A
+        model.setHovered(a, false)
+        XCTAssertEqual(model.hoveredID, b, "leaving A must not clear B")
+        model.setHovered(b, false)
+        XCTAssertNil(model.hoveredID)
+    }
+
     func testInlineEditAndUndo() {
         model.capture.saveNote("draft")
         let item = store.items[0]

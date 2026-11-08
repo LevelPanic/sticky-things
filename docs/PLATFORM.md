@@ -73,7 +73,12 @@ These are research notes, checked against macOS 26.1 where marked, behind the de
 
 * **Background apps and the keyboard.** A key `.nonactivatingPanel` takes the keyboard without changing the frontmost app (Maccy and Spotlight work this way). `makeKey` succeeds after a user event aimed at us (the hotkey, a click on our corner). Opening via URL can race activation, so we fall back to activating and hand focus back on close.
 * **Initial focus.** When a window becomes key, AppKit focuses the *first* text field. We focus the composer explicitly.
-* **Hover.** SwiftUI's hover tracking already uses `.activeAlways`. The real enemy is **transparent pixels**, which pass the mouse through to the window behind. So the panel catches every mouse event (`ignoresMouseEvents = false`) and sits on real glass. Tooltips also need `allowsToolTipsWhenApplicationIsInactive`.
+* **Hover.** SwiftUI's hover tracking already uses `.activeAlways`. There are two enemies:
+  * **Transparent pixels** pass the mouse through to the window behind. So the panel catches every mouse event (`ignoresMouseEvents = false`) and sits on real glass. Tooltips also need `allowsToolTipsWhenApplicationIsInactive`.
+  * **Hit testing.** `.onHover` follows whatever view is on top. If the hover-revealed buttons are an overlay *above* the view with `.onHover`, reaching them counts as leaving, so they hide, the card is hovered again on the next move, and so on: buttons that flicker and vanish when the pointer rests. Put `.onHover` *after* any overlay that holds buttons.
+  * SwiftUI reads the real cursor position, so synthetic mouse-moved events don't produce hover. Real hover can only be checked by hand (or with event-posting permission).
+* **Window shape.** `NSGlassEffectView` as a borderless window's content draws its shadow into the window's square corners. macOS then sees a rectangular window and outlines it. The panel's content view clips to the rounded shape (`cornerRadius` + `masksToBounds`, continuous curve), so the corners stay fully transparent and the system shadow follows the curve.
+* **Capturing our own windows.** An app may capture its *own* windows without Screen Recording permission (`CGWindowListCreateImage` with the window's number, looked up at runtime because the SDK marks it unavailable). The self-test uses this to check the panel's corners.
 * **Quick Look.** `QLPreviewPanel` only takes the keyboard when the app is active, so we activate for previews. It raises itself above our panel automatically.
 
 ## Hot Corners

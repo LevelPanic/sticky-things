@@ -96,6 +96,21 @@ final class QuickPanel: NSPanel {
 enum PanelChrome {
     static func background(cornerRadius: CGFloat, content: NSView) -> NSView {
         content.autoresizingMask = [.width, .height]
+        // The window is exactly the panel's rounded shape. Unclipped, the glass's own shadow
+        // fills the window's square corners, so macOS outlines a rectangle around the panel.
+        let clip = NSView()
+        clip.wantsLayer = true
+        clip.layer?.cornerRadius = cornerRadius
+        clip.layer?.cornerCurve = .continuous
+        clip.layer?.masksToBounds = true
+        let material = material(cornerRadius: cornerRadius, content: content)
+        material.frame = clip.bounds
+        material.autoresizingMask = [.width, .height]
+        clip.addSubview(material)
+        return clip
+    }
+
+    private static func material(cornerRadius: CGFloat, content: NSView) -> NSView {
         if #available(macOS 26.0, *) {
             let glass = NSGlassEffectView()
             glass.cornerRadius = cornerRadius

@@ -52,6 +52,15 @@ enum SelfTest {
         check(window.isKeyWindow, "panel has keyboard focus")
         check(focusedIdentifier(window) == "composer", "the composer (not search) has focus")
 
+        // The window takes the panel's rounded shape: nothing is drawn in its square corners
+        // (otherwise macOS outlines a rectangle around the glass).
+        if let shot = WindowCapture.image(of: window) {
+            WindowCapture.saveIfRequested(shot, name: "panel")
+            check(WindowCapture.cornersAreClear(shot, window: window), "panel corners are transparent")
+        } else {
+            check(false, "capture the panel window")
+        }
+
         // Typing a note and pressing Return saves it.
         guard let composer = PanelController.findTextView("composer", in: window.contentView) else {
             return check(false, "composer exists")
@@ -181,6 +190,39 @@ enum SelfTest {
             NSColor.systemTeal.setFill(); rect.fill(); return true
         }
         return NSBitmapImageRep(data: image.tiffRepresentation!)!.representation(using: .png, properties: [:])!
+    }
+}
+
+/// Captures our own windows. Apps can always capture their own windows, so this needs no
+/// Screen Recording permission. The call is looked up at runtime because the SDK marks it
+/// unavailable in favor of ScreenCaptureKit, which needs permission even for your own windows.
+@MainActor
+enum WindowCapture {
+    private typealias CreateImage = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
+
+    static func image(of window: NSWindow) -> NSBitmapImageRep? {
+        guard let symbol = dlsym(dlopen(nil, RTLD_NOW), "CGWindowListCreateImage") else { return nil }
+        let create = unsafeBitCast(symbol, to: CreateImage.self)
+        let includingWindow: UInt32 = 1 << 3, boundsIgnoreFraming: UInt32 = 1 << 0
+        guard let image = create(.null, includingWindow, UInt32(window.windowNumber), boundsIgnoreFraming)?
+            .takeRetainedValue() else { return nil }
+        return NSBitmapImageRep(cgImage: image)
+    }
+
+    /// The pixel just inside each corner of the window's frame is fully transparent.
+    static func cornersAreClear(_ shot: NSBitmapImageRep, window: NSWindow) -> Bool {
+        let scale = CGFloat(shot.pixelsWide) / window.frame.width
+        let inset = Int(2 * scale)
+        let (w, h) = (shot.pixelsWide, shot.pixelsHigh)
+        let corners = [(inset, inset), (w - 1 - inset, inset), (inset, h - 1 - inset), (w - 1 - inset, h - 1 - inset)]
+        return corners.allSatisfy { (shot.colorAt(x: $0.0, y: $0.1)?.alphaComponent ?? 1) < 0.01 }
+    }
+
+    /// `STICKY_SELFTEST_CAPTURES=<folder>` keeps the captures for a look.
+    static func saveIfRequested(_ shot: NSBitmapImageRep, name: String) {
+        guard let folder = ProcessInfo.processInfo.environment["STICKY_SELFTEST_CAPTURES"],
+              let png = shot.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png"))
     }
 }
 

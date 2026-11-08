@@ -27,11 +27,6 @@ struct ItemCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .cardSurface(tint: tint, hovered: isHovered, selected: isSelected || isEditing, highlighted: isCopied)
             .contentShape(RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
-            .onHover { inside in
-                withAnimation(Motion.quick) {
-                    if inside { model.hoveredID = item.id } else if model.hoveredID == item.id { model.hoveredID = nil }
-                }
-            }
             .modifier(CardGestures(enabled: !isEditing, item: item, model: model))
             // Accessibility: the card is one element with named actions (VoiceOver, the self-test)…
             .accessibilityElement(children: isEditing ? .contain : .ignore)
@@ -50,6 +45,9 @@ struct ItemCard: View {
             .overlay(alignment: .bottomTrailing) {
                 if showsActions { actionBar.padding(Space.xs).transition(.opacity) }
             }
+            // Hover tracks the card *and* its buttons. Tracked under the buttons, the pointer
+            // reaching them would count as leaving the card and hide them (v2.0 flicker).
+            .onHover { inside in model.setHovered(item.id, inside) }
             .animation(Motion.quick, value: isCopied)
             .animation(Motion.quick, value: showsActions)
     }

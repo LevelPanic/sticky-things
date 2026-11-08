@@ -111,6 +111,14 @@ final class PanelModel: ObservableObject {
         hoveredID = nil
     }
 
+    /// Pointer entered or left a card. Leaving one card never clears the card it moved onto
+    /// (SwiftUI can report "entered B" before "left A").
+    func setHovered(_ id: UUID, _ inside: Bool) {
+        withAnimation(Motion.quick) {
+            if inside { hoveredID = id } else if hoveredID == id { hoveredID = nil }
+        }
+    }
+
     // MARK: Saving things
 
     func submitComposer() {

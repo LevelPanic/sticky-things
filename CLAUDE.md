@@ -17,8 +17,8 @@ Keep this file current. After any change that moves the status, the known gaps o
 ## Commands
 
 ```bash
-make test        # 28 unit tests: StickyCore, StickyDesign (contrast + design lint), PanelModel
-make selftest    # drives the real panel through in-process accessibility (25 checks, throwaway library)
+make test        # 29 unit tests: StickyCore, StickyDesign (contrast + design lint), PanelModel
+make selftest    # drives the real panel through in-process accessibility (26 checks, throwaway library)
 make snapshots   # renders every screen to build/snapshots (offscreen, flat surface instead of glass)
 make install     # release build, copy to /Applications, relaunch (scripts/build-app.sh --install)
 make run         # build and launch from ./build
@@ -52,12 +52,15 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 - Synthesized `NSEvent` clicks don't reach SwiftUI controls. Drive UI through accessibility instead.
 - When a window becomes key, AppKit focuses the first text field (search). `PanelController.focusComposer()` fixes it, and the self-test checks it.
 - Transparent window pixels let hover and clicks fall through. The panel keeps `ignoresMouseEvents = false` on a real glass background.
+- `.onHover` must come *after* any overlay that holds buttons. Placed before it, resting the pointer on the buttons counts as leaving the card and they vanish (v2.0 bug).
+- `NSGlassEffectView` as a window's content draws its shadow into the square corners, and macOS then outlines a rectangle. `PanelChrome` clips the content view to the rounded shape.
 - Long SwiftUI expressions hit type-checker timeouts. Split them into small views or helper functions.
 - Photos, Mail, Safari images and Preview pages arrive as file promises (`NSFilePromiseReceiver`), not file URLs.
 
 ## Working in this environment
 
-- Claude's sandbox here can't post real input events or take screenshots. Verify UI with `--selftest` and `--snapshot`, and ask the owner to check real pointer hover and drags from other apps.
+- Claude's sandbox here can't post input events (`CGPreflightPostEventAccess` is false) or screenshot other apps. It *can* capture the app's own windows (`WindowCapture` in `SelfTest.swift`; `STICKY_SELFTEST_CAPTURES=<folder> make selftest` saves them), which is how to check real glass, corners and layout.
+- SwiftUI hover reads the real cursor, so synthetic mouse moves can't test it. Ask the owner to check hover and drags from other apps.
 - Never change the owner's system settings (Hot Corners, `com.apple.dock` defaults) yourself. The onboarding's "Turn Off Quick Note" button is for the owner to press.
 - Commit only when asked. Keep personal content (the owner's wallpaper, notes, paths) out of committed docs and screenshots.
 
@@ -65,10 +68,11 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 
 - **v1** (commit `51b29ac`): first working corner panel, JSON storage.
 - **v2** (commit "Sticky Things v2: throw in anything…", 2026-11-08): three-module restructure, lossless capture of anything, SQLite storage with one-time v1 import, one-click copy, edit in place, Quick Look, drag out, Impeccable-based design system with contrast and lint tests, guided Hot Corners setup, new icon, accessibility-driven self-test. Installed in /Applications and running; the owner's 2 v1 notes migrated; the owner turned off their bottom-right Quick Note hot corner.
+- **v2.1** (2026-11-08, from the owner's first real use): hover buttons no longer vanish while the pointer rests on them, and the panel's corners are round with no square outline. The self-test now checks the corners from a capture of the real window.
 
-**Waiting on the owner:** confirm real hover on cards, the first click right after opening, and the drag matrix in docs/TESTING.md (Finder, Preview, Photos, Safari, Mail, Notes, screenshot thumbnail, 1Password).
+**Waiting on the owner:** confirm hover buttons stay put while resting on them, the round corners, the first click right after opening, and the drag matrix in docs/TESTING.md (Finder, Preview, Photos, Safari, Mail, Notes, screenshot thumbnail, 1Password).
 
 **Known gaps (candidates for next):**
 - Dragging a multi-file item out carries only the first file (copying gives all of them).
 - Concealed items (password-manager copies) show blurred but aren't encrypted on disk.
-- Glass can't be rendered in offscreen snapshots, so the real look is only checked by hand.
+- `--snapshot` renders offscreen on a flat surface. The real glass look is only seen in self-test window captures and by hand; moving snapshots to own-window captures would make them true to life.

@@ -74,6 +74,8 @@ All of it lives in `~/Library/Application Support/Sticky Things/`:
 ### Decisions worth knowing
 
 * **The panel's hit area is solid.** The window ignores no mouse events, and its background is real system glass. Transparent pixels let clicks and hovers fall through to the window behind, which is what broke hover in v1.
+* **The window is the panel's shape.** The content view clips to the rounded corners, so the glass's own shadow can't fill the square corners and make macOS outline a rectangle.
+* **Hover wraps the card's buttons.** `.onHover` sits after the overlay that holds the buttons, so resting on them still counts as hovering the card.
 * **Nothing is hover-only.** Clicking a card copies it *and selects it*, and a selected card keeps its buttons. Every action is also in the right-click menu, a keyboard shortcut and a VoiceOver action.
 * **⌘V goes through the main menu's Edit ▸ Paste.** That is how macOS tells a user paste apart from a background read (pasteboard privacy, macOS 15.4+). The app never reads the clipboard on its own.
 * **Focus is deterministic.** When a window becomes key, AppKit focuses the first text field, which would be search. The controller explicitly focuses the composer, and the self-test checks it.
