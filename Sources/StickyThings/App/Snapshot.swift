@@ -1,8 +1,10 @@
 import AppKit
+import StickyCore
+import StickyDesign
 import SwiftUI
 
-/// `StickyThings --snapshot <folder>` renders the UI with sample notes to PNGs and quits.
-/// Used to review the design without screen-recording permission.
+/// `StickyThings --snapshot <folder>` renders every screen with realistic sample data to PNGs
+/// (light and dark) and quits. Sample data goes through the real capture code.
 @MainActor
 enum Snapshot {
     static func runIfRequested() -> Bool {
@@ -10,39 +12,56 @@ enum Snapshot {
         guard let index = args.firstIndex(of: "--snapshot"), index + 1 < args.count else { return false }
         let folder = URL(fileURLWithPath: args[index + 1], isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        PanelView.flatBackground = true
+        PanelMaterial.flat = true
 
-        let store = sampleStore(in: folder.appendingPathComponent("store"))
+        let paths = StorePaths.temporary()
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+        guard let store = try? ItemStore(paths: paths, inMemory: true) else { exit(1) }
+        let capture = CaptureService(store: store)
+        fillSamples(store: store, capture: capture)
         let settings = Settings(defaults: UserDefaults(suiteName: "StickyThingsSnapshot")!)
         settings.corner = .bottomRight
         settings.hotKey = .default
         settings.draft = ""
 
+        let panelSize = NSSize(width: PanelLayout.width, height: 640)
         for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
-            let model = PanelModel(store: store, settings: settings)
+            let model = PanelModel(store: store, capture: capture, settings: settings)
             model.isPresented = true
-            model.panelHeight = 600
-            model.selection = store.notes.first(where: { !$0.pinned && $0.kind == .link })?.id
+            model.panelHeight = 640
             model.conflictAction = name == "light" ? "Quick Note" : nil
-            render(PanelView(model: model, store: store, settings: settings),
-                   size: NSSize(width: PanelView.width + PanelView.margin * 2, height: 600 + PanelView.margin * 2),
-                   appearance: appearance, to: folder.appendingPathComponent("panel-\(name).png"))
+            model.selection = store.items.first(where: { $0.kind == .link })?.id
+            model.hoveredID = nil
+            model.copiedID = store.items.first(where: { $0.kind == .text && !$0.pinned })?.id
+            render(PanelView(model: model, store: store, settings: settings), size: panelSize, appearance: appearance,
+                   to: folder.appendingPathComponent("panel-\(name).png"))
 
-            let emptyStore = NoteStore(rootURL: folder.appendingPathComponent("empty"))
-            emptyStore.persists = false
-            let emptyModel = PanelModel(store: emptyStore, settings: settings)
+            let emptyStore = try! ItemStore(paths: StorePaths.temporary(), inMemory: true)
+            let emptyModel = PanelModel(store: emptyStore, capture: CaptureService(store: emptyStore), settings: settings)
             emptyModel.isPresented = true
-            emptyModel.panelHeight = 520
+            emptyModel.panelHeight = 560
             render(PanelView(model: emptyModel, store: emptyStore, settings: settings),
-                   size: NSSize(width: PanelView.width + PanelView.margin * 2, height: 520 + PanelView.margin * 2),
-                   appearance: appearance, to: folder.appendingPathComponent("empty-\(name).png"))
+                   size: NSSize(width: panelSize.width, height: 560), appearance: appearance,
+                   to: folder.appendingPathComponent("empty-\(name).png"))
+        }
+
+        let onboarding = OnboardingModel(settings: settings)
+        for step in [OnboardingModel.Step.welcome, .corner, .freeCorner, .tryIt] {
+            onboarding.step = step
+            render(OnboardingView(model: onboarding, settings: settings), size: NSSize(width: 580, height: 560),
+                   appearance: .aqua, to: folder.appendingPathComponent("onboarding-\(step.rawValue)-\(step).png"))
+        }
+
+        for pane in [SettingsPane.corner, .general, .notes] {
+            render(SettingsView(settings: settings, store: store, pane: pane), size: NSSize(width: 720, height: 600),
+                   appearance: .darkAqua, to: folder.appendingPathComponent("settings-\(pane.rawValue).png"))
         }
 
         for phase in [CornerPeekModel.Phase.peek, .dropTarget] {
             let peek = CornerPeekModel(corner: .bottomRight)
             peek.phase = phase
             let view = ZStack(alignment: .bottomTrailing) {
-                LinearGradient(colors: [.indigo, .purple], startPoint: .top, endPoint: .bottom)
+                Palette.surfaceSunken.color
                 CornerPeekView(model: peek)
             }
             .frame(width: 220, height: 220)
@@ -50,37 +69,26 @@ enum Snapshot {
                    to: folder.appendingPathComponent("corner-\(phase == .peek ? "peek" : "drop").png"))
         }
 
-        for pane in [SettingsPane.corner, .general] {
-            render(SettingsView(settings: settings, store: store, pane: pane),
-                   size: NSSize(width: 720, height: 600), appearance: .darkAqua,
-                   to: folder.appendingPathComponent("settings-\(pane.rawValue).png"))
-        }
-
-        let pickerSettings = settings
-        render(CornerPicker(corner: .constant(pickerSettings.corner)).padding(20),
-               size: NSSize(width: 330, height: 222), appearance: .aqua,
-               to: folder.appendingPathComponent("corner-picker.png"))
-
         print("Snapshots written to \(folder.path)")
         exit(0)
     }
 
-    private static func render<V: View>(_ view: V, size: NSSize, appearance: NSAppearance.Name, to url: URL) {
+    static func render<V: View>(_ view: V, size: NSSize, appearance: NSAppearance.Name, to url: URL) {
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
         host.frame = NSRect(origin: .zero, size: size)
         let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: appearance)
-        window.backgroundColor = appearance == .darkAqua ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.93, alpha: 1)
+        let background = appearance == .darkAqua ? NSColor(hex: 0x101010) : NSColor(hex: 0xE9E7E2)
+        window.backgroundColor = background
         window.contentView = host
         host.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date().addingTimeInterval(0.6)) // let async thumbnails load
+        RunLoop.main.run(until: Date().addingTimeInterval(0.8)) // thumbnails load asynchronously
         host.layoutSubtreeIfNeeded()
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
         host.cacheDisplay(in: host.bounds, to: rep)
-        // Composite on the window color so transparent areas aren't black.
         let output = NSImage(size: size)
         output.lockFocus()
-        window.backgroundColor.setFill()
+        background.setFill()
         NSRect(origin: .zero, size: size).fill()
         rep.draw(in: NSRect(origin: .zero, size: size))
         output.unlockFocus()
@@ -89,47 +97,77 @@ enum Snapshot {
         }
     }
 
-    private static func sampleStore(in folder: URL) -> NoteStore {
-        try? FileManager.default.removeItem(at: folder)
-        let store = NoteStore(rootURL: folder)
-        try? FileManager.default.createDirectory(at: store.mediaURL, withIntermediateDirectories: true)
-        store.persists = false
+    static func fillSamples(store: ItemStore, capture: CaptureService) {
         let now = Date()
-        func ago(_ minutes: Double) -> Date { now.addingTimeInterval(-minutes * 60) }
+        func save(_ fill: (NSPasteboard) -> Void, ago minutes: Double, source: String? = nil) {
+            let pb = NSPasteboard(name: .init("snapshot-\(UUID().uuidString)"))
+            defer { pb.releaseGlobally() }
+            pb.clearContents()
+            fill(pb)
+            if case .saved(let items)? = try? capture.save(from: pb, source: source.map { SourceApp(bundleID: nil, name: $0) }),
+               let id = items.first?.id {
+                store.update(id) { $0.createdAt = now.addingTimeInterval(-minutes * 60) }
+            }
+        }
+        func note(_ text: String, ago minutes: Double, tint: Tint = .none, pinned: Bool = false) {
+            if case .saved(let items)? = capture.saveNote(text), let id = items.first?.id {
+                store.update(id) {
+                    $0.createdAt = now.addingTimeInterval(-minutes * 60)
+                    $0.tint = tint
+                    $0.pinned = pinned
+                }
+            }
+        }
 
-        // A sample "screenshot".
-        let imageName = "sample.png"
+        note("Wi-Fi: Garden-5G · password is on the fridge", ago: 60 * 24 * 9, pinned: true)
+        note("Flight QF12 · seat 34A", ago: 60 * 30, tint: .blue, pinned: true)
+        note("Ideas: drop screenshots on the corner, pin the wifi password", ago: 60 * 26)
+        save({ pb in
+            let text = "Quarterly review: revenue up 12%, churn flat"
+            let rtf = NSAttributedString(string: text, attributes: [.font: NSFont.boldSystemFont(ofSize: 13)])
+                .rtf(from: NSRange(location: 0, length: text.count), documentAttributes: [:])!
+            pb.setData(rtf, forType: .rtf)
+            pb.setString(text, forType: .string)
+        }, ago: 60 * 5, source: "Pages")
+        note("Groceries\n– oat milk\n– eggs\n– coffee beans", ago: 60 * 3, tint: .yellow)
+        save({ pb in pb.setData(samplePDF(), forType: .pdf) }, ago: 70, source: "Preview")
+        save({ pb in pb.writeObjects([URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Package.swift") as NSURL]) },
+             ago: 42, source: "Finder")
+        save({ pb in pb.setData(sampleImage(), forType: .png) }, ago: 18, source: "Screenshot")
+        note("https://github.com/utsavg05/StickyEdges", ago: 6)
+        if let link = store.items.first(where: { $0.kind == .link }) {
+            store.update(link.id) { $0.link?.title = "StickyEdges: sticky notes for your screen edge" }
+        }
+        note("Call Sam back about the lease at 4:30pm", ago: 1)
+    }
+
+    static func sampleImage() -> Data {
         let image = NSImage(size: NSSize(width: 640, height: 400), flipped: false) { rect in
-            NSGradient(colors: [.systemTeal, .systemBlue, .systemIndigo])?.draw(in: rect, angle: -35)
-            NSColor.white.withAlphaComponent(0.85).setFill()
-            NSBezierPath(roundedRect: NSRect(x: 60, y: 60, width: 300, height: 180), xRadius: 18, yRadius: 18).fill()
-            NSColor.white.withAlphaComponent(0.5).setFill()
-            NSBezierPath(roundedRect: NSRect(x: 390, y: 60, width: 190, height: 280), xRadius: 18, yRadius: 18).fill()
+            NSColor(hex: 0x2E3A46).setFill(); rect.fill()
+            NSColor(hex: 0xF4F1EA).setFill()
+            NSBezierPath(roundedRect: NSRect(x: 40, y: 40, width: 360, height: 320), xRadius: 14, yRadius: 14).fill()
+            NSColor(hex: 0xFFE27A).setFill()
+            NSBezierPath(roundedRect: NSRect(x: 430, y: 40, width: 170, height: 150), xRadius: 14, yRadius: 14).fill()
+            NSColor(hex: 0xD8D2C4).setFill()
+            for row in 0..<5 { NSBezierPath(roundedRect: NSRect(x: 70, y: 300 - row * 46, width: 260 - row * 30, height: 18), xRadius: 9, yRadius: 9).fill() }
             return true
         }
-        if let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-            try? png.write(to: store.mediaURL.appendingPathComponent(imageName))
-        }
+        return NSBitmapImageRep(data: image.tiffRepresentation!)!.representation(using: .png, properties: [:])!
+    }
 
-        var notes: [Note] = []
-        notes.append(Note(kind: .text, text: "Ideas: drop screenshots on the corner, pin the wifi password", createdAt: ago(60 * 26)))
-        notes.append(Note(kind: .text, text: "Groceries\n– oat milk\n– eggs\n– coffee beans", color: .yellow, createdAt: ago(60 * 3)))
-        var file = Note(kind: .file, text: FileManager.default.currentDirectoryPath + "/Package.swift")
-        file.createdAt = ago(42)
-        notes.append(file)
-        var img = Note(kind: .image, text: "")
-        img.imageFile = imageName
-        img.pixelWidth = 1280; img.pixelHeight = 800
-        img.createdAt = ago(18)
-        notes.append(img)
-        var link = Note(kind: .link, text: "https://github.com/utsavg05/StickyEdges")
-        link.title = "utsavg05/StickyEdges — sticky notes for your screen edge"
-        link.createdAt = ago(6)
-        notes.append(link)
-        notes.append(Note(kind: .text, text: "Call Sam back about the lease — 4:30pm", createdAt: ago(1)))
-        notes.append(Note(kind: .text, text: "Wi-Fi: Garden-5G · pw on the fridge", pinned: true, createdAt: ago(60 * 24 * 9)))
-        notes.append(Note(kind: .text, text: "Flight QF12 · seat 34A", color: .blue, pinned: true, createdAt: ago(60 * 30)))
-        store.replaceAll(with: notes)
-        return store
+    static func samplePDF() -> Data {
+        let data = NSMutableData()
+        var box = CGRect(x: 0, y: 0, width: 612, height: 792)
+        let context = CGContext(consumer: CGDataConsumer(data: data as CFMutableData)!, mediaBox: &box, nil)!
+        for page in 0..<3 {
+            context.beginPDFPage(nil)
+            context.setFillColor(NSColor(hex: 0x1F1B16).cgColor)
+            context.fill(CGRect(x: 72, y: 680, width: 300, height: 28))
+            context.setFillColor(NSColor(hex: 0xBDB6A8).cgColor)
+            for line in 0..<14 { context.fill(CGRect(x: 72, y: 620 - line * 30, width: 460 - (line % 3) * 60 - page * 10, height: 10)) }
+            context.endPDFPage()
+        }
+        context.closePDF()
+        return data as Data
     }
 }

@@ -1,11 +1,11 @@
 import SwiftUI
 
-enum StickyPalette {
-    static let paperTop = Color(red: 1.00, green: 0.91, blue: 0.52)
-    static let paperBottom = Color(red: 1.00, green: 0.81, blue: 0.26)
-    static let flapTop = Color(red: 1.00, green: 0.97, blue: 0.80)
-    static let flapBottom = Color(red: 1.00, green: 0.88, blue: 0.48)
-    static let ink = Color(red: 0.45, green: 0.33, blue: 0.05)
+public enum StickyPalette {
+    public static let paperTop = Color(red: 1.00, green: 0.91, blue: 0.52)
+    public static let paperBottom = Color(red: 1.00, green: 0.81, blue: 0.26)
+    public static let flapTop = Color(red: 1.00, green: 0.97, blue: 0.80)
+    public static let flapBottom = Color(red: 1.00, green: 0.88, blue: 0.48)
+    public static let ink = Color(red: 0.45, green: 0.33, blue: 0.05)
 }
 
 /// A sticky note whose top-leading corner is cut off diagonally (the dog-ear).
@@ -44,13 +44,19 @@ private struct DogEarFlap: Shape {
 }
 
 /// A little yellow sticky note with a dog-eared corner — the app's visual signature.
-struct MiniStickyNote: View {
-    var size: CGFloat = 64
+public struct MiniStickyNote: View {
+    public var size: CGFloat = 64
     /// Which corner of the note is folded.
-    var foldCorner: ScreenCorner = .topLeft
-    var showLines = true
+    public var foldCorner: FoldCorner = .topLeft
+    public var showLines = true
 
-    var body: some View {
+    public init(size: CGFloat = 64, foldCorner: FoldCorner = .topLeft, showLines: Bool = true) {
+        self.size = size
+        self.foldCorner = foldCorner
+        self.showLines = showLines
+    }
+
+    public var body: some View {
         let fold = size * 0.26
         ZStack(alignment: .topLeading) {
             DogEarBody(fold: fold, radius: size * 0.08)
@@ -76,14 +82,9 @@ struct MiniStickyNote: View {
     }
 }
 
-/// The opposite corner (used to fold the note's corner that faces the middle of the screen).
-extension ScreenCorner {
-    var opposite: ScreenCorner {
-        switch self {
-        case .topLeft: return .bottomRight
-        case .topRight: return .bottomLeft
-        case .bottomLeft: return .topRight
-        case .bottomRight: return .topLeft
-        }
-    }
+/// Which corner of the note is folded over.
+public enum FoldCorner: Sendable {
+    case topLeft, topRight, bottomLeft, bottomRight
+    public var isLeft: Bool { self == .topLeft || self == .bottomLeft }
+    public var isTop: Bool { self == .topLeft || self == .topRight }
 }

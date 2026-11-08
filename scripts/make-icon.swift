@@ -38,83 +38,54 @@ func drawIcon(size: CGFloat) -> NSBitmapImageRep {
 
     NSGraphicsContext.saveGraphicsState()
     squircle.addClip()
-    NSGradient(colors: [color(0x5B7CF6), color(0x6A4FE0), color(0x8E3FC9)],
-               atLocations: [0, 0.55, 1], colorSpace: .sRGB)!.draw(in: body, angle: -60)
-    // Soft light from the top-left.
-    NSGradient(colors: [color(0xFFFFFF, 0.28), color(0xFFFFFF, 0)])!
-        .draw(fromCenter: NSPoint(x: 260, y: 860), radius: 0, toCenter: NSPoint(x: 260, y: 860), radius: 620, options: [])
+    // The whole icon is the sticky note: warm paper (no purple, no glow).
+    NSGradient(colors: [color(0xFFF1A8), color(0xFFE279), color(0xF8CF55)], atLocations: [0, 0.55, 1], colorSpace: .sRGB)!
+        .draw(in: body, angle: -70)
 
-    // The sticky note, tucked into the bottom-right corner.
-    let s: CGFloat = 610
-    let f: CGFloat = s * 0.24
-    ctx.saveGState()
-    ctx.translateBy(x: 668, y: 372)
-    ctx.rotate(by: 11 * .pi / 180)
-
-    let note = NSBezierPath()
-    note.move(to: NSPoint(x: -s / 2 + f, y: s / 2))
-    note.line(to: NSPoint(x: s / 2 - 30, y: s / 2))
-    note.curve(to: NSPoint(x: s / 2, y: s / 2 - 30), controlPoint1: NSPoint(x: s / 2, y: s / 2), controlPoint2: NSPoint(x: s / 2, y: s / 2))
-    note.line(to: NSPoint(x: s / 2, y: -s / 2))
-    note.line(to: NSPoint(x: -s / 2, y: -s / 2))
-    note.line(to: NSPoint(x: -s / 2, y: s / 2 - f))
-    note.close()
-
-    NSGraphicsContext.saveGraphicsState()
-    let noteShadow = NSShadow()
-    noteShadow.shadowColor = color(0x1A0B4A, 0.45)
-    noteShadow.shadowBlurRadius = 46
-    noteShadow.shadowOffset = NSSize(width: -10, height: 18)
-    noteShadow.set()
-    color(0xFFD84A).setFill()
-    note.fill()
-    NSGraphicsContext.restoreGraphicsState()
-
-    NSGraphicsContext.saveGraphicsState()
-    note.addClip()
-    NSGradient(colors: [color(0xFFEA8A), color(0xFFD23F), color(0xFFC21F)], atLocations: [0, 0.6, 1], colorSpace: .sRGB)!
-        .draw(in: NSRect(x: -s / 2, y: -s / 2, width: s, height: s), angle: -70)
-    // Handwriting lines.
-    color(0x9A6A00, 0.32).setFill()
-    for (i, width) in [CGFloat(300), 380, 230].enumerated() {
-        let y = s / 2 - f - 70 - CGFloat(i) * 74
-        NSBezierPath(roundedRect: NSRect(x: -s / 2 + 92, y: y, width: width, height: 30), xRadius: 15, yRadius: 15).fill()
+    // Handwriting lines in ink.
+    color(0x6C4F25, 0.42).setFill()
+    for (i, width) in [CGFloat(430), 520, 330].enumerated() {
+        let y = 640 - CGFloat(i) * 92
+        NSBezierPath(roundedRect: NSRect(x: 230, y: y, width: width, height: 38), xRadius: 19, yRadius: 19).fill()
     }
-    NSGraphicsContext.restoreGraphicsState()
 
-    // The dog-ear flap.
+    // The bottom-right corner peels up: cut the corner away…
+    let f: CGFloat = 300
+    let cut = NSBezierPath()
+    cut.move(to: NSPoint(x: body.maxX - f, y: body.minY - 40))
+    cut.line(to: NSPoint(x: body.maxX + 40, y: body.minY + f))
+    cut.line(to: NSPoint(x: body.maxX + 40, y: body.minY - 40))
+    cut.close()
+    NSGraphicsContext.current?.compositingOperation = .clear
+    cut.fill()
+    NSGraphicsContext.current?.compositingOperation = .sourceOver
+
+    // …and fold it back over the note.
     let flap = NSBezierPath()
-    flap.move(to: NSPoint(x: -s / 2 + f, y: s / 2))
-    flap.line(to: NSPoint(x: -s / 2, y: s / 2 - f))
-    flap.curve(to: NSPoint(x: -s / 2 + f, y: s / 2 - f),
-               controlPoint1: NSPoint(x: -s / 2 + f * 0.45, y: s / 2 - f * 1.04),
-               controlPoint2: NSPoint(x: -s / 2 + f * 0.8, y: s / 2 - f))
-    flap.curve(to: NSPoint(x: -s / 2 + f, y: s / 2),
-               controlPoint1: NSPoint(x: -s / 2 + f, y: s / 2 - f * 0.8),
-               controlPoint2: NSPoint(x: -s / 2 + f * 1.04, y: s / 2 - f * 0.45))
+    flap.move(to: NSPoint(x: body.maxX - f, y: body.minY))
+    flap.line(to: NSPoint(x: body.maxX, y: body.minY + f))
+    flap.curve(to: NSPoint(x: body.maxX - f * 0.92, y: body.minY + f * 0.92),
+               controlPoint1: NSPoint(x: body.maxX - f * 0.4, y: body.minY + f * 1.02),
+               controlPoint2: NSPoint(x: body.maxX - f * 0.75, y: body.minY + f * 0.98))
     flap.close()
     NSGraphicsContext.saveGraphicsState()
     let flapShadow = NSShadow()
-    flapShadow.shadowColor = color(0x6B4A00, 0.4)
-    flapShadow.shadowBlurRadius = 16
-    flapShadow.shadowOffset = NSSize(width: 6, height: -8)
+    flapShadow.shadowColor = color(0x47300C, 0.35)
+    flapShadow.shadowBlurRadius = 26
+    flapShadow.shadowOffset = NSSize(width: -10, height: 12)
     flapShadow.set()
-    color(0xFFF4C2).setFill()
+    color(0xFFF6CF).setFill()
     flap.fill()
     NSGraphicsContext.restoreGraphicsState()
     NSGraphicsContext.saveGraphicsState()
     flap.addClip()
-    NSGradient(colors: [color(0xFFFBE6), color(0xFFE27A)])!
-        .draw(in: NSRect(x: -s / 2, y: s / 2 - f, width: f, height: f), angle: -45)
+    NSGradient(colors: [color(0xFFFBE8), color(0xFFE48A)])!.draw(in: NSRect(x: body.maxX - f, y: body.minY, width: f, height: f), angle: 45)
     NSGraphicsContext.restoreGraphicsState()
-    ctx.restoreGState()
 
-    // Thin inner edge highlight.
-    color(0xFFFFFF, 0.18).setStroke()
+    // Thin inner edge so the paper reads on light backgrounds.
+    color(0x47300C, 0.12).setStroke()
     squircle.lineWidth = 3
     squircle.stroke()
-    NSGraphicsContext.restoreGraphicsState()
-
     NSGraphicsContext.restoreGraphicsState()
     return rep
 }

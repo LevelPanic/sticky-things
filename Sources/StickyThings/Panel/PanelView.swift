@@ -1,189 +1,191 @@
 import AppKit
+import StickyCore
+import StickyDesign
 import SwiftUI
 
 struct PanelView: View {
     @ObservedObject var model: PanelModel
-    @ObservedObject var store: NoteStore
+    @ObservedObject var store: ItemStore
     @ObservedObject var settings: Settings
-
-    static let width: CGFloat = 384
-    static let margin: CGFloat = 30 // transparent room for the shadow and the open animation
-    static let cornerRadius: CGFloat = 26
-    /// Snapshots render offscreen where Liquid Glass can't, so they use a flat background.
-    nonisolated(unsafe) static var flatBackground = false
 
     var body: some View {
         VStack(spacing: 0) {
             header
             if let action = model.conflictAction { conflictBanner(action) }
-            if !model.pinnedNotes.isEmpty && !model.isSearching { pinnedStrip }
+            if let error = store.lastError { errorBanner(error) }
+            if !model.pinnedItems.isEmpty && !model.isFiltering { pinnedStrip }
             if model.anchorAtBottom {
-                notesArea
+                itemsArea
                 composer
             } else {
                 composer
-                notesArea
+                itemsArea
             }
         }
-        .frame(width: Self.width, height: model.panelHeight)
-        .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
-        .panelBackground(cornerRadius: Self.cornerRadius)
+        .frame(width: PanelLayout.width, height: model.panelHeight)
+        .panelBackdrop()
+        .clipShape(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
         .overlay { if model.isDropTargeted { dropOverlay } }
-        .scaleEffect(model.isPresented ? 1 : 0.86, anchor: model.scaleAnchor)
-        .opacity(model.isPresented ? 1 : 0)
-        .padding(Self.margin)
+        .accessibilityIdentifier("panel")
     }
 
     // MARK: Header
 
     private var header: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                KeyTextView(text: $model.search, height: $model.searchHeight,
-                            placeholder: store.notes.isEmpty ? "Search" : "Search \(store.notes.count) notes",
-                            fontSize: 13, singleLine: true, focusToken: model.searchFocus,
-                            onCommand: model.handleSearchCommand)
-                    .frame(height: model.searchHeight)
-                if model.isSearching {
-                    Button { model.search = ""; model.composerFocus += 1 } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
+        VStack(spacing: Space.s) {
+            HStack(spacing: Space.xs) {
+                searchField
+                IconButton(model.keepOpen ? "Let Panel Close" : "Keep Panel Open",
+                           symbol: model.keepOpen ? "pin.fill" : "pin", isOn: model.keepOpen) { model.keepOpen.toggle() }
+                IconButton("Settings", symbol: "gearshape") { model.openSettings() }
+            }
+            FilterBar(options: Self.filterOptions, selection: $model.filter)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, Space.m)
+        .padding(.top, Space.m)
+        .padding(.bottom, Space.s)
+    }
+
+    static let filterOptions: [FilterBar<ItemFilter>.Option] = [
+        .init(id: .all, title: "All", symbol: "square.stack"),
+        .init(id: .notes, title: "Notes", symbol: "text.alignleft"),
+        .init(id: .links, title: "Links", symbol: "link"),
+        .init(id: .images, title: "Images", symbol: "photo"),
+        .init(id: .files, title: "Files", symbol: "doc"),
+    ]
+
+    private var searchField: some View {
+        HStack(spacing: Space.s - 2) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.textTertiary.color)
+            KeyTextView(text: $model.search, height: $model.searchHeight,
+                        placeholder: store.items.isEmpty ? "Search" : "Search \(store.items.count) items",
+                        fontSize: 13, singleLine: true, focusToken: model.searchFocus,
+                        onCommand: model.handleSearchCommand, identifier: "search")
+                .frame(height: model.searchHeight)
+                .accessibilityIdentifier("search")
+            if model.isSearching {
+                IconButton("Clear search", symbol: "xmark.circle.fill", size: Metrics.minHitTarget) {
+                    model.search = ""
+                    model.composerFocus += 1
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Capsule().fill(.background.opacity(0.4)))
-            .overlay(Capsule().strokeBorder(.primary.opacity(0.08)))
-
-            CircleIconButton(symbol: model.keepOpen ? "pin.fill" : "pin",
-                             help: model.keepOpen ? "Panel stays open — click to let it close on its own" : "Keep the panel open while you work",
-                             size: 28, tint: model.keepOpen ? .accentColor : .primary) {
-                model.keepOpen.toggle()
-            }
-            CircleIconButton(symbol: "gearshape", help: "Settings (⌘,)", size: 28) { model.openSettings() }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
+        .padding(.leading, Space.m - 2)
+        .padding(.trailing, Space.xs)
+        .frame(height: 32)
+        .background(Capsule().fill(Palette.surfaceSunken.color))
+        .overlay(Capsule().strokeBorder(Palette.border.color))
     }
 
     private func conflictBanner(_ action: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                Text("macOS \(action) also opens from this corner, so both will pop up. Turn it off to let Sticky Things take over.")
-                    .font(.system(size: 12))
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                Button { model.hideConflictBanner() } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .bold)) }
-                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Hide this tip")
-            }
-            HStack(spacing: 8) {
-                Button("Turn Off \(action) Corner") { model.disableMacHotCorner() }
-                    .buttonStyle(.borderedProminent).controlSize(.small)
-                    .help("Sets the macOS hot corner to “–” and restarts the Dock")
-                Button("Hot Corners…") { MacHotCorners.openSystemSettings() }
-                    .controlSize(.small)
-            }
+        Banner(message: "macOS also opens \(action) from this corner, so both appear. Turn it off to give the corner to Sticky Things.",
+               onDismiss: model.hideConflictBanner) {
+            Button("Turn Off \(action)") { model.disableMacHotCorner() }
+                .buttonStyle(.borderedProminent).controlSize(.small)
+                .help("Sets the macOS hot corner to “–” and restarts the Dock")
+            Button("Open Hot Corners…") { MacHotCorners.openHotCornersSettings() }
+                .controlSize(.small)
         }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.orange.opacity(0.12)))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.orange.opacity(0.3)))
-        .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .padding(.horizontal, Space.m)
+        .padding(.bottom, Space.s)
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        Banner(symbol: "externaldrive.badge.exclamationmark", message: message) { EmptyView() }
+            .padding(.horizontal, Space.m)
+            .padding(.bottom, Space.s)
     }
 
     private var pinnedStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(Array(model.pinnedNotes.enumerated()), id: \.element.id) { index, note in
-                    PinnedChip(note: note, index: index, model: model, isFlashing: model.flashID == note.id)
+            HStack(spacing: Space.s - 2) {
+                ForEach(Array(model.pinnedItems.enumerated()), id: \.element.id) { index, item in
+                    PinnedChip(item: item, index: index, model: model)
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, Space.m)
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, Space.s)
     }
 
-    // MARK: List
+    // MARK: Items
 
     private struct Section: Identifiable {
         let id: String
-        var notes: [Note]
+        var items: [Item]
     }
 
     private var sections: [Section] {
         var result: [Section] = []
-        for note in model.listNotes {
-            let title = RelativeTime.section(note.createdAt)
-            if result.last?.id == title { result[result.count - 1].notes.append(note) } else { result.append(Section(id: title, notes: [note])) }
+        for item in model.listItems {
+            let title = RelativeTime.section(item.createdAt)
+            if result.last?.id == title { result[result.count - 1].items.append(item) } else { result.append(Section(id: title, items: [item])) }
         }
         if model.listFlowsUp {
-            result = result.reversed().map { Section(id: $0.id, notes: $0.notes.reversed()) }
+            result = result.reversed().map { Section(id: $0.id, items: $0.items.reversed()) }
         }
         return result
     }
 
-    @ViewBuilder private var notesArea: some View {
-        let notes = model.listNotes
+    @ViewBuilder private var itemsArea: some View {
         ZStack(alignment: model.anchorAtBottom ? .bottom : .top) {
-            if notes.isEmpty {
-                if model.isSearching { noResults } else if store.notes.isEmpty { emptyState } else { allPinnedState }
+            if model.listItems.isEmpty {
+                if model.isFiltering { noResults } else if store.items.isEmpty { EmptyStateView(settings: settings) } else { allPinned }
             } else {
                 list
             }
             if let toast = model.toast {
-                ToastView(toast: toast, undo: model.undo)
-                    .padding(.vertical, 8)
-                    .transition(.move(edge: model.anchorAtBottom ? .bottom : .top).combined(with: .opacity))
+                toastView(toast)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func toastView(_ toast: Toast) -> some View {
+        let undo: (() -> Void)? = toast.canUndo ? { model.undo() } : nil
+        let shift: CGFloat = model.anchorAtBottom ? 6 : -6
+        return ToastView(text: toast.text, symbol: toast.symbol, isError: toast.isError,
+                         actionTitle: toast.canUndo ? "Undo" : nil, action: undo)
+            .padding(.vertical, Space.s)
+            .transition(AnyTransition.opacity.combined(with: .offset(y: shift)))
+    }
+
     private var list: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) {
+                LazyVStack(alignment: .leading, spacing: Space.s) {
                     Color.clear.frame(height: 0).id(Self.listStart)
                     ForEach(sections) { section in
-                        Text(section.id.uppercased())
-                            .font(.system(size: 10, weight: .semibold))
-                            .tracking(0.6)
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 6)
-                            .padding(.top, 6)
-                        ForEach(section.notes) { note in
-                            NoteCard(note: note, model: model, isSelected: model.selection == note.id,
-                                     isFlashing: model.flashID == note.id)
-                                .id(note.id)
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: model.listFlowsUp ? .bottom : .top).combined(with: .opacity),
-                                    removal: .opacity.combined(with: .scale(scale: 0.95))))
+                        SectionHeader(section.id)
+                        ForEach(section.items) { item in
+                            ItemCard(item: item, model: model)
+                                .id(item.id)
+                                .transition(.opacity.combined(with: .offset(y: model.listFlowsUp ? 8 : -8)))
                         }
                     }
                     Color.clear.frame(height: 0).id(Self.listEnd)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.listNotes.map(\.id))
+                .padding(.horizontal, PanelLayout.listPadding)
+                .padding(.vertical, Space.xs)
+                .animation(Motion.standard, value: model.listItems.map(\.id))
             }
+            .scrollIndicators(.automatic)
             .defaultScrollAnchor(model.listFlowsUp ? .bottom : .top)
+            .keepsNewestEndAnchored(model.listFlowsUp)
             .onAppear { scrollToNewest(proxy) }
             .onChange(of: model.openToken) { _, _ in scrollToNewest(proxy) }
-            .onChange(of: model.isSearching) { _, _ in scrollToNewest(proxy) }
+            .onChange(of: model.isFiltering) { _, _ in scrollToNewest(proxy) }
             .onChange(of: model.scrollRequest) { _, request in
                 guard let request else { return }
-                withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(request.id) }
+                withAnimation(Motion.standard) { proxy.scrollTo(request.id) }
             }
         }
     }
 
-    /// Lazy stacks only estimate heights, so anchor explicitly on the newest note.
+    /// Lazy stacks only estimate heights, so anchor explicitly on the newest end.
     private func scrollToNewest(_ proxy: ScrollViewProxy) {
         let target = model.listFlowsUp ? Self.listEnd : Self.listStart
         let anchor: UnitPoint = model.listFlowsUp ? .bottom : .top
@@ -194,50 +196,24 @@ struct PanelView: View {
     private static let listStart = "list-start"
     private static let listEnd = "list-end"
 
-    private var emptyState: some View {
-        VStack(spacing: 14) {
-            MiniStickyNote(size: 64, foldCorner: .topLeft)
-                .rotationEffect(.degrees(-6))
-                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
-            VStack(spacing: 6) {
-                Text("Your corner stash").font(.system(size: 15, weight: .semibold))
-                Text("Type a note and press ↩, or press ⌘V to save whatever is on your clipboard — text, links, screenshots, files.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                hint("cursorarrow.click", "Click the \(settings.corner.name.lowercased()) corner of your screen to open this")
-                hint("tray.and.arrow.down", "Drag anything onto the corner to stash it")
-                if let combo = settings.hotKey { hint("keyboard", "Or press \(combo.displayString) from anywhere") }
-            }
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.background.opacity(0.35)))
-        }
-        .padding(24)
-    }
-
-    private func hint(_ symbol: String, _ text: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: symbol).frame(width: 18).foregroundStyle(.secondary)
-            Text(text).font(.system(size: 11.5)).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     private var noResults: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").font(.system(size: 26)).foregroundStyle(.tertiary)
-            Text("No notes match “\(model.search)”").font(.system(size: 13)).foregroundStyle(.secondary)
+        VStack(spacing: Space.s) {
+            Image(systemName: "magnifyingglass").font(.system(size: 22)).foregroundStyle(Palette.textTertiary.color)
+            Text(model.isSearching ? "No items match “\(model.search)”" : "No \(model.filter.rawValue) yet")
+                .font(TypeScale.body).foregroundStyle(Palette.textSecondary.color)
+            if model.isSearching {
+                Button("Clear Search") { model.search = ""; model.composerFocus += 1 }.buttonStyle(.link).font(TypeScale.callout)
+            } else if model.filter != .all {
+                Button("Show All Items") { model.filter = .all }.buttonStyle(.link).font(TypeScale.callout)
+            }
         }
-        .padding(30)
         .frame(maxHeight: .infinity)
     }
 
-    private var allPinnedState: some View {
-        Text("Everything is pinned above.\nNew notes will stack up here.")
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
+    private var allPinned: some View {
+        Text("Everything is pinned above.\nNew items stack up here.")
+            .font(TypeScale.footnote)
+            .foregroundStyle(Palette.textSecondary.color)
             .multilineTextAlignment(.center)
             .frame(maxHeight: .infinity)
     }
@@ -245,172 +221,148 @@ struct PanelView: View {
     // MARK: Composer
 
     private var composer: some View {
-        let isEditing = model.editingID != nil
-        let text = model.composerText.wrappedValue
-        let canSubmit = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return VStack(alignment: .leading, spacing: 6) {
-            if isEditing {
-                HStack(spacing: 6) {
-                    Image(systemName: "pencil")
-                    Text("Editing note")
-                    Spacer()
-                    Button("Cancel") { model.cancelEditing() }.buttonStyle(.plain).foregroundStyle(Color.accentColor)
-                }
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
-            }
-            HStack(alignment: .bottom, spacing: 8) {
-                KeyTextView(text: model.composerText, height: $model.composerHeight,
-                            placeholder: isEditing ? "Edit note…" : "Type a note, or ⌘V to paste anything…",
+        let canSubmit = !settings.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return VStack(alignment: .leading, spacing: Space.s - 2) {
+            HStack(alignment: .bottom, spacing: Space.s) {
+                KeyTextView(text: $settings.draft, height: $model.composerHeight,
+                            placeholder: "Write a note or paste anything",
                             fontSize: 14, maxLines: 8, focusToken: model.composerFocus,
                             onCommand: model.handleComposerCommand,
-                            onPaste: model.handlePaste,
-                            onFocusChange: { focused in DispatchQueue.main.async { model.composerFocused = focused } })
+                            onPaste: model.paste(from:),
+                            onFocusChange: { focused in DispatchQueue.main.async { model.composerFocused = focused } },
+                            identifier: "composer")
                     .frame(height: model.composerHeight)
+                    .accessibilityIdentifier("composer")
                 Button(action: model.submitComposer) {
-                    Image(systemName: isEditing ? "checkmark.circle.fill" : "arrow.up.circle.fill")
+                    Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 22))
-                        .foregroundStyle(canSubmit ? Color.accentColor : Color.secondary.opacity(0.4))
+                        .foregroundStyle(canSubmit ? Palette.accent : Palette.textDisabled.color)
+                        .frame(width: Metrics.minHitTarget + 4, height: Metrics.minHitTarget + 4)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .disabled(!canSubmit)
-                .help(isEditing ? "Save changes (↩)" : "Save note (↩)")
+                .help("Save Note (↩)")
+                .accessibilityLabel("Save note")
             }
-            .padding(.leading, 14)
-            .padding(.trailing, 8)
-            .padding(.vertical, 9)
-            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.background.opacity(0.6)))
+            .padding(.leading, Space.m + 2)
+            .padding(.trailing, Space.xs)
+            .padding(.vertical, Space.s - 1)
+            .background(RoundedRectangle(cornerRadius: Radius.l + 4, style: .continuous).fill(Palette.surfaceRaised.color))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(model.composerFocused ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.1),
+                RoundedRectangle(cornerRadius: Radius.l + 4, style: .continuous)
+                    .strokeBorder(model.composerFocused ? Palette.accent.opacity(0.6) : Palette.border.color,
                                   lineWidth: model.composerFocused ? 1.5 : 1)
             )
-            keyHints
+            if model.selection != nil {
+                KeyHint("↩", "copies it and closes the panel").padding(.horizontal, Space.xs).transition(.opacity)
+            } else if model.composerFocused && settings.draft.isEmpty {
+                KeyHint("⌘V", "saves whatever you copied").padding(.horizontal, Space.xs).transition(.opacity)
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, model.anchorAtBottom ? 6 : 0)
-        .padding(.bottom, model.anchorAtBottom ? 10 : 8)
-    }
-
-    private var keyHints: some View {
-        let browse = model.anchorAtBottom ? "↑" : "↓"
-        return HStack(spacing: 10) {
-            keyHint("↩", model.selection != nil ? "copy" : "save")
-            keyHint("⇧↩", "new line")
-            keyHint(browse, "browse")
-            keyHint("⌘V", "paste")
-            keyHint("esc", "close")
-        }
-        .padding(.horizontal, 6)
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private func keyHint(_ key: String, _ label: String) -> some View {
-        HStack(spacing: 3) {
-            Text(key).font(.system(size: 10, weight: .semibold, design: .rounded))
-            Text(label).font(.system(size: 10))
-        }
-        .foregroundStyle(.tertiary)
+        .animation(Motion.quick, value: model.selection == nil)
+        .padding(.horizontal, Space.m)
+        .padding(.top, model.anchorAtBottom ? Space.s - 2 : 0)
+        .padding(.bottom, model.anchorAtBottom ? Space.m : Space.s)
     }
 
     private var dropOverlay: some View {
-        RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-            .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2.5, dash: [8, 6]))
-            .background(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous).fill(Color.accentColor.opacity(0.12)))
+        RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
+            .strokeBorder(Palette.accent, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
+            .background(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).fill(Palette.accent.opacity(0.1)))
             .overlay(
-                VStack(spacing: 8) {
-                    Image(systemName: "tray.and.arrow.down.fill").font(.system(size: 30))
-                    Text("Drop to save").font(.system(size: 14, weight: .semibold))
+                VStack(spacing: Space.s) {
+                    Image(systemName: "tray.and.arrow.down").font(.system(size: 26, weight: .medium))
+                    Text("Drop to save").font(TypeScale.title)
                 }
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Palette.accent)
             )
             .allowsHitTesting(false)
     }
 }
 
-// MARK: - Pieces
-
-struct PinnedChip: View {
-    let note: Note
-    let index: Int
-    let model: PanelModel
-    let isFlashing: Bool
-    @State private var hovering = false
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon).font(.system(size: 10, weight: .semibold))
-            Text(note.shortTitle).font(.system(size: 12, weight: .medium)).lineLimit(1)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: 170)
-        .foregroundStyle(note.color.paper == nil ? Color.primary : Color.black.opacity(0.8))
-        .background(Capsule().fill(note.color.paper.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.background.opacity(hovering ? 0.75 : 0.55))))
-        .overlay(Capsule().strokeBorder(isFlashing ? Color.accentColor : Color.primary.opacity(0.1), lineWidth: isFlashing ? 2 : 1))
-        .contentShape(Capsule())
-        .onHover { hovering = $0 }
-        .onTapGesture { model.copy(note, closeAfter: false) }
-        .simultaneousGesture(TapGesture(count: 2).onEnded { model.open(note) })
-        .onDrag { NoteActions.itemProvider(for: note, store: model.store) }
-        .help(index < 9 ? "Click to copy · ⌘\(index + 1) copies and closes\n\(note.kind == .text ? note.text : note.shortTitle)" : note.shortTitle)
-        .contextMenu {
-            Button("Copy") { model.copy(note, closeAfter: false) }
-            if note.kind == .text { Button("Edit") { model.beginEditing(note) } } else { Button("Open") { model.open(note) } }
-            Button("Unpin") { model.togglePin(note) }
-            Divider()
-            Button("Delete", role: .destructive) { model.delete(note) }
+private extension View {
+    /// Lazy stacks only estimate row heights; on macOS 15+ keep the newest end pinned while
+    /// rows measure themselves and thumbnails load, so the last card is never cut off.
+    @ViewBuilder func keepsNewestEndAnchored(_ bottom: Bool) -> some View {
+        if #available(macOS 15.0, *) {
+            self.defaultScrollAnchor(bottom ? .bottom : .top, for: .initialOffset)
+                .defaultScrollAnchor(bottom ? .bottom : .top, for: .sizeChanges)
+        } else {
+            self
         }
     }
+}
 
-    private var icon: String {
-        switch note.kind {
-        case .text: return "text.alignleft"
+/// A pinned item: one click copies, double-click opens, right-click for more.
+struct PinnedChip: View {
+    let item: Item
+    let index: Int
+    @ObservedObject var model: PanelModel
+
+    var body: some View {
+        Chip(item.headline, symbol: symbol, tint: item.kind.isTextual ? item.tint.swatch : nil,
+             isHighlighted: model.copiedID == item.id)
+            .onTapGesture { model.copy(item) }
+            .simultaneousGesture(TapGesture(count: 2).onEnded { model.activate(item) })
+            .onDrag { PasteboardWriter.itemProvider(for: item, store: model.store) }
+            .contextMenu { CardMenuItems(item: item, model: model, compact: false) }
+            .help(index < 9 ? "Click to copy. ⌘\(index + 1) copies it and closes the panel." : "Click to copy")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Pinned \(item.kind.label.lowercased()), \(item.headline)")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { model.copy(item) }
+            .accessibilityAction(named: "Unpin") { model.togglePin(item) }
+            .accessibilityIdentifier("pin-\(item.id.uuidString)")
+    }
+
+    private var symbol: String {
+        switch item.kind {
+        case .text, .richText: return "text.alignleft"
         case .link: return "link"
         case .image: return "photo"
-        case .file: return "doc"
+        case .pdf: return "doc.richtext"
+        case .file, .files: return "doc"
+        case .folder: return "folder"
+        case .color: return "paintpalette"
+        case .other: return "shippingbox"
         }
     }
 }
 
-struct ToastView: View {
-    let toast: Toast
-    let undo: () -> Void
+/// What you see before you've saved anything: teaches the next step.
+struct EmptyStateView: View {
+    @ObservedObject var settings: Settings
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: toast.symbol).font(.system(size: 11, weight: .bold))
-            Text(toast.text).font(.system(size: 12, weight: .medium))
-            if toast.hasUndo {
-                Button("Undo", action: undo)
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
+        VStack(spacing: Space.l) {
+            MiniStickyNote(size: 52, foldCorner: .topLeft)
+                .rotationEffect(.degrees(-6))
+                .elevation(.sticky)
+            VStack(spacing: Space.s - 2) {
+                Text("Nothing saved yet").font(TypeScale.title).foregroundStyle(Palette.textPrimary.color)
+                Text("Write below and press Return, or press ⌘V to save whatever you copied. You can also drop files, PDFs, images and links here.")
+                    .font(TypeScale.callout)
+                    .foregroundStyle(Palette.textSecondary.color)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: 260)
+            VStack(alignment: .leading, spacing: Space.s) {
+                row("cursorarrow.click", "Click the \(settings.corner.name.lowercased()) corner of your screen to open this panel")
+                row("tray.and.arrow.down", "Drag anything onto that corner to save it without opening the panel")
+                if let combo = settings.hotKey { row("keyboard", "Press \(combo.displayString) in any app") }
+            }
+            .padding(Space.m)
+            .background(RoundedRectangle(cornerRadius: Radius.l, style: .continuous).fill(Palette.surfaceSunken.color))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(Capsule().fill(.regularMaterial))
-        .overlay(Capsule().strokeBorder(.primary.opacity(0.1)))
-        .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+        .padding(Space.xl)
     }
-}
 
-extension View {
-    /// Liquid Glass on macOS 26, a vibrant material before that.
-    @ViewBuilder
-    func panelBackground(cornerRadius: CGFloat) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        if PanelView.flatBackground {
-            self.background(Color(nsColor: .windowBackgroundColor), in: shape)
-                .overlay(shape.strokeBorder(.primary.opacity(0.12)))
-        } else if #available(macOS 26.0, *) {
-            self.glassEffect(.regular, in: shape)
-        } else {
-            self.background(.regularMaterial, in: shape)
-                .overlay(shape.strokeBorder(.white.opacity(0.14)))
-                .shadow(color: .black.opacity(0.28), radius: 18, y: 8)
+    private func row(_ symbol: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: Space.s) {
+            Image(systemName: symbol).frame(width: 18).foregroundStyle(Palette.textSecondary.color)
+            Text(text).font(TypeScale.callout).foregroundStyle(Palette.textPrimary.color).fixedSize(horizontal: false, vertical: true)
         }
     }
 }

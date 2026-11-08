@@ -1,4 +1,5 @@
 import AppKit
+import StickyDesign
 import SwiftUI
 
 enum ScreenCorner: String, CaseIterable, Codable, Identifiable {
@@ -71,6 +72,27 @@ enum ScreenCorner: String, CaseIterable, Codable, Identifiable {
             if probes.contains(where: { other.contains($0) }) { return false }
         }
         return true
+    }
+}
+
+extension ScreenCorner {
+    var opposite: ScreenCorner {
+        switch self {
+        case .topLeft: return .bottomRight
+        case .topRight: return .bottomLeft
+        case .bottomLeft: return .topRight
+        case .bottomRight: return .topLeft
+        }
+    }
+
+    /// The note peeking out of this corner folds the corner that faces the middle of the screen.
+    var peekFold: FoldCorner {
+        switch opposite {
+        case .topLeft: return .topLeft
+        case .topRight: return .topRight
+        case .bottomLeft: return .bottomLeft
+        case .bottomRight: return .bottomRight
+        }
     }
 }
 

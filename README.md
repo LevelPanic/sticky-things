@@ -3,132 +3,83 @@
 <h1 align="center">Sticky Things</h1>
 
 <p align="center"><b>Quick notes that are actually quick.</b><br>
-Click the corner of your screen, paste anything, done.</p>
+Click the corner of your screen and throw anything in.</p>
 
 ---
 
-Sticky Things replaces macOS's Quick Note hot corner with something you'll actually use. Click the
-bottom-right corner (or any corner you pick) and a little stack slides out with the cursor already
-in a text box:
+Sticky Things replaces macOS's Quick Note hot corner. Click the bottom-right corner (or any corner you pick) and a panel opens from it with the cursor already in the composer.
 
-- **Paste anything with ⌘V** — text, links, screenshots, images, files copied in Finder. It's saved
-  the moment you paste, no extra step.
-- **Type a note and press ↩.** Shift-↩ for a new line.
-- **Browse with ↑ / ↓** like shell history: the newest thing sits right above the text box and older
-  things stack up behind it. ↩ copies the selected note and closes, so you can paste it where you are.
-- **Throw things at the corner.** Drag a file, image or text onto the corner and it's stashed
-  without opening anything.
+- **Throw anything in.** Press ⌘V to save whatever you copied, or drag in anything:
+  - text and rich text from any app
+  - links (with page title and icon)
+  - screenshots, images and PDFs (including pages dragged out of Preview)
+  - files and folders from Finder
+  - photos, Mail attachments, and private app data like Figma layers
 
-It's a native Swift/SwiftUI app with Liquid Glass on macOS 26, no Dock icon, and it runs offline
-except for fetching link titles.
+  Everything is kept losslessly, so it comes back out exactly as it went in.
+- **Get it back in one click.** Click a card to copy it. Its buttons stay put (Copy, Edit or Quick Look, More). Drag a card into any app, or press ↑ then ↩ to copy and close.
+- **Edit in place.** Double-click a note to edit it right there in the card, formatting included. Edits can be undone.
+- **Throw at the corner.** Drop something on the corner itself to save it without opening anything.
+- **Find it again.** Search, filter (Notes · Links · Images · Files), pin favorites (⌘1–⌘9), and preview anything with Space (Quick Look).
 
-| The stack | Empty state | Corner peek | Drop on the corner |
-|---|---|---|---|
-| <img src="docs/panel-dark.png" width="230"> | <img src="docs/empty-dark.png" width="230"> | <img src="docs/corner-peek.png" width="150"> | <img src="docs/corner-drop.png" width="150"> |
+| The stack | Dark | Empty | Corner peek | Drop on the corner |
+|---|---|---|---|---|
+| <img src="docs/panel-light.png" width="190"> | <img src="docs/panel-dark.png" width="190"> | <img src="docs/empty-light.png" width="190"> | <img src="docs/corner-peek.png" width="120"> | <img src="docs/corner-drop.png" width="120"> |
 
-> Screenshots are offscreen renders with a flat background. The real panel uses Liquid Glass.
+<sub>Screenshots are offscreen renders. The real panel sits on Liquid Glass.</sub>
 
 ## Install
 
-You need macOS 14 or newer and Xcode 16+ (or its command line tools).
+You need macOS 14 or newer (it's designed for macOS 26) and Xcode 16 or newer.
 
 ```bash
-make install     # builds, copies "Sticky Things.app" to /Applications and launches it
+make install     # build, copy to /Applications, launch
 ```
 
-Or `make app` to build `build/Sticky Things.app` without installing. `make run` builds and launches it from `build/`.
+The first launch walks you through setup:
 
-### Turn off Apple's Quick Note corner
+1. Pick a corner.
+2. Free it from Apple's Hot Corners, either with one click or by opening System Settings at Hot Corners while the screen updates live.
+3. Try it once.
 
-macOS ships with **Quick Note** on the bottom-right hot corner, so both would pop up. The panel shows a
-banner with a **Turn Off Quick Note Corner** button. It sets that hot corner to “–” and restarts the
-Dock. You can also do it yourself in **System Settings › Desktop & Dock › Hot Corners…**, or move
-Sticky Things to a different corner.
+macOS doesn't let apps add themselves to the Hot Corners menu, so Sticky Things watches the corner itself. Run the setup again from the menu bar icon ▸ **Set Up Corner…**.
 
-## Using it
+## Keys
 
 | | |
 |---|---|
-| **Click the corner** | Open / close the panel. A small sticky note peeks out when your pointer arrives. |
-| **⌃⌥N** (anywhere) | Open / close the panel (change it in Settings). |
-| **Menu bar icon** | Click to open; right-click for Settings and Quit. Can be hidden. |
-| **Drag onto the corner or panel** | Save files, images, text or links. |
-| **Drag a note out** | Drop it into any app (text, link, image or the original file). |
+| Click the corner or press **⌃⌥N** | Open or close |
+| **⌘V** | Save whatever you copied (⌥⌘V puts it in the composer instead) |
+| **↩** / **⇧↩** | Save the note / new line |
+| **↑ ↓** | Browse; **↩** copies the selected item and closes |
+| **Space** | Quick Look |
+| **⌘E**, **⌘O**, **⌘P**, **⌘⌫** | Edit, open, pin, delete (**⌘Z** to undo) |
+| **⌘1–⌘9** | Copy a pinned item and close |
+| **⌘F** / **Esc** | Search / step back, then close |
 
-### In the panel
+Every action is also in the right-click menu and available to VoiceOver.
 
-| Key | Does |
+## How it's built
+
+Three Swift modules, each with its own tests:
+
+- **StickyCore:** lossless capture, SQLite and content-addressed storage, and clipboard output.
+- **StickyDesign:** an Impeccable-based design system, with contrast and lint tests.
+- **StickyThings:** the app.
+
+| Doc | What's in it |
 |---|---|
-| `↩` | Save what you typed · copy the selected note and close |
-| `⌘V` | Save whatever is on the clipboard instantly (when the box is empty) |
-| `⌥⌘V` | Paste into the box as text, to edit before saving |
-| `⇧↩` | New line |
-| `↑` `↓` | Browse notes |
-| `⌘C` | Copy the selected note |
-| `⌘E` / double-click | Edit a text note (or open a link/file/image) |
-| `⌘O` | Open the selected link, file or image |
-| `⌘P` | Pin / unpin (pinned notes live in the strip at the top) |
-| `⌘1`…`⌘9` | Copy pinned note 1–9 and close |
-| `⌘⌫` | Delete (`⌘Z` or the toast's Undo brings it back) |
-| `⌘F` / `Tab` | Search |
-| `esc` | Clear selection / search, then close |
-
-Click a card to copy it. Right-click a card to change its color, pin it, open it or delete it. The 📌 in the
-header keeps the panel open while you work in other apps.
-
-### Settings
-
-<img src="docs/settings-corner.png" width="520" alt="Settings: corner picker">
-
-- **Corner:** pick any corner on a mini screen, open by click or hover (with a delay), turn the peek
-  animation on or off, and choose whether to use the corner on every display. On multiple displays only
-  “hard” corners are used, ones the pointer can't slide past onto another screen.
-- **General:** open at login, menu bar icon, global shortcut, link previews.
-- **Notes:** how long to keep unpinned notes (forever by default), Show in Finder, Delete all.
-
-## Where your notes live
-
-Everything stays on your Mac in `~/Library/Application Support/Sticky Things/`:
-`notes.json` holds the notes and `media/` holds pasted images and link icons. Files you paste are saved
-as references (with a bookmark, so they're found again if moved), not copied.
-
-## Automation
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, storage layout, key decisions |
+| [docs/DESIGN.md](docs/DESIGN.md) | Tokens, components, writing rules, what's enforced automatically |
+| [docs/PLATFORM.md](docs/PLATFORM.md) | How macOS handles pasteboards, file promises, Preview and Finder drags, privacy, focus and hover, and what we do about each |
+| [docs/TESTING.md](docs/TESTING.md) | Unit tests, design lint, the UI self-test, snapshots, and the manual drag matrix |
 
 ```bash
-open "stickythings://open"                     # toggle the panel
-open "stickythings://add?text=Buy%20milk"      # add a note
-open "stickythings://settings"
+make test        # 28 unit tests (core, design system, app logic)
+make selftest    # drives the real panel through accessibility (throwaway library)
+make snapshots   # renders every screen to build/snapshots
 ```
 
-## Development
+Your items live in `~/Library/Application Support/Sticky Things/`, and nothing leaves your Mac except the one-time fetch of a saved link's title and icon. Automation hooks: `stickythings://open`, `…://add?text=…`, `…://settings`, `…://setup`.
 
-```bash
-swift build                   # debug build
-make test                     # unit tests (clipboard parsing, storage, geometry)
-.build/debug/StickyThings --snapshot /tmp/snaps   # render the UI to PNGs with sample notes
-make icon                     # redraw Resources/AppIcon.icns
-```
-
-```text
-Sources/StickyThings/
-  App/        entry point, app wiring, snapshot renderer
-  Corner/     hot-corner windows (peek, click/hover, drop target) + multi-display management
-  Panel/      the slide-out panel: model, SwiftUI views, text input, focus handling
-  Model/      Note, clipboard parsing, storage, link previews, copy/open/drag helpers
-  Settings/   preferences, settings window, corner picker, shortcut recorder
-  System/     global hotkey, menu bar icon, login item, macOS hot-corner detection
-```
-
-How it works: each corner is a tiny transparent always-on-top window. It grows when the pointer
-reaches it so the note can peek out, and it registers as a drag destination. The panel is a borderless
-`NSPanel` that takes the keyboard without activating the app, so the app you were in stays in front.
-When macOS won't allow that (e.g. when opened from a URL), it activates and hands focus back when it
-closes. None of this needs Accessibility or Screen Recording permission.
-
-## Notes & limits
-
-- The app is ad-hoc signed for your own Mac. To share it with others it would need a Developer ID
-  signature and notarization.
-- Rich text is saved as plain text. Images are saved as PNG.
-- Inspired by [StickyEdges](https://github.com/utsavg05/StickyEdges), which tucks sticky notes into the
-  screen edge. Sticky Things instead puts one quick-capture stack in a corner.
+Inspired by [StickyEdges](https://github.com/utsavg05/StickyEdges).

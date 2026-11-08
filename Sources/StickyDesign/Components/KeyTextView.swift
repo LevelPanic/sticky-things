@@ -1,36 +1,36 @@
 import AppKit
 import SwiftUI
 
-enum KeyCommand {
+public enum KeyCommand: Sendable {
     case up, down, enter, newline, escape, tab, deleteSelection
 }
 
 /// NSTextView with a placeholder and paste interception (⌘V saves anything instantly).
-final class StickyTextView: NSTextView {
-    var placeholder: String = "" { didSet { needsDisplay = true } }
-    var placeholderFont: NSFont?
+public final class StickyTextView: NSTextView {
+    public var placeholder: String = "" { didSet { needsDisplay = true } }
+    public var placeholderFont: NSFont?
     /// Return true to swallow the paste (it was saved as a note instead).
-    var onPaste: ((NSPasteboard) -> Bool)?
-    var onFocusChange: ((Bool) -> Void)?
+    public var onPaste: ((NSPasteboard) -> Bool)?
+    public var onFocusChange: ((Bool) -> Void)?
 
-    override func paste(_ sender: Any?) {
+    public override func paste(_ sender: Any?) {
         if let onPaste, onPaste(NSPasteboard.general) { return }
         pasteAsPlainText(sender)
     }
 
-    override func becomeFirstResponder() -> Bool {
+    public override func becomeFirstResponder() -> Bool {
         let ok = super.becomeFirstResponder()
         if ok { onFocusChange?(true) }
         return ok
     }
 
-    override func resignFirstResponder() -> Bool {
+    public override func resignFirstResponder() -> Bool {
         let ok = super.resignFirstResponder()
         if ok { onFocusChange?(false) }
         return ok
     }
 
-    override func draw(_ dirtyRect: NSRect) {
+    public override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard string.isEmpty, !placeholder.isEmpty else { return }
         let attrs: [NSAttributedString.Key: Any] = [
@@ -43,26 +43,45 @@ final class StickyTextView: NSTextView {
         (placeholder as NSString).draw(with: rect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: attrs)
     }
 
-    override var acceptsFirstResponder: Bool { true }
+    public override var acceptsFirstResponder: Bool { true }
 }
 
 /// SwiftUI wrapper around `StickyTextView` that grows with its content.
-struct KeyTextView: NSViewRepresentable {
-    @Binding var text: String
-    @Binding var height: CGFloat
-    var placeholder: String
-    var fontSize: CGFloat = 14
-    var maxLines: Int = 6
-    var singleLine = false
+public struct KeyTextView: NSViewRepresentable {
+    @Binding public var text: String
+    @Binding public var height: CGFloat
+    public var placeholder: String
+    public var fontSize: CGFloat = 14
+    public var maxLines: Int = 6
+    public var singleLine = false
     /// Increment to move keyboard focus here.
-    var focusToken: Int
-    var onCommand: (KeyCommand) -> Bool
-    var onPaste: ((NSPasteboard) -> Bool)? = nil
-    var onFocusChange: ((Bool) -> Void)? = nil
+    public var focusToken: Int
+    public var onCommand: (KeyCommand) -> Bool
+    public var onPaste: ((NSPasteboard) -> Bool)? = nil
+    public var onFocusChange: ((Bool) -> Void)? = nil
+    /// Lets the window find this field (e.g. to focus the composer when the panel opens).
+    public var identifier: String? = nil
 
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    public init(text: Binding<String>, height: Binding<CGFloat>, placeholder: String, fontSize: CGFloat = 14,
+                maxLines: Int = 6, singleLine: Bool = false, focusToken: Int,
+                onCommand: @escaping (KeyCommand) -> Bool, onPaste: ((NSPasteboard) -> Bool)? = nil,
+                onFocusChange: ((Bool) -> Void)? = nil, identifier: String? = nil) {
+        self._text = text
+        self._height = height
+        self.placeholder = placeholder
+        self.fontSize = fontSize
+        self.maxLines = maxLines
+        self.singleLine = singleLine
+        self.focusToken = focusToken
+        self.onCommand = onCommand
+        self.onPaste = onPaste
+        self.onFocusChange = onFocusChange
+        self.identifier = identifier
+    }
 
-    func makeNSView(context: Context) -> NSScrollView {
+    public func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    public func makeNSView(context: Context) -> NSScrollView {
         let storage = NSTextStorage()
         let layout = NSLayoutManager()
         storage.addLayoutManager(layout)
@@ -91,6 +110,7 @@ struct KeyTextView: NSViewRepresentable {
         textView.minSize = NSSize(width: 0, height: 0)
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.placeholder = placeholder
+        textView.identifier = identifier.map { NSUserInterfaceItemIdentifier(rawValue: $0) }
         textView.onPaste = onPaste
         textView.onFocusChange = onFocusChange
         textView.string = text
@@ -108,7 +128,7 @@ struct KeyTextView: NSViewRepresentable {
         return scroll
     }
 
-    func updateNSView(_ scroll: NSScrollView, context: Context) {
+    public func updateNSView(_ scroll: NSScrollView, context: Context) {
         let coordinator = context.coordinator
         coordinator.parent = self
         guard let textView = coordinator.textView else { return }
@@ -131,7 +151,7 @@ struct KeyTextView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, NSTextViewDelegate {
+    public final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: KeyTextView
         weak var textView: StickyTextView?
         var lastFocusToken: Int
@@ -141,7 +161,7 @@ struct KeyTextView: NSViewRepresentable {
             self.lastFocusToken = parent.focusToken // focus only when explicitly requested
         }
 
-        func textDidChange(_ notification: Notification) {
+        public func textDidChange(_ notification: Notification) {
             guard let textView else { return }
             if parent.text != textView.string { parent.text = textView.string }
             recalculateHeight()
@@ -158,7 +178,7 @@ struct KeyTextView: NSViewRepresentable {
             if abs(parent.height - rounded) > 0.5 { parent.height = rounded }
         }
 
-        func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+        public func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             let flags = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
             switch selector {
             case #selector(NSResponder.insertNewline(_:)):

@@ -37,6 +37,14 @@ final class Settings: ObservableObject {
         set { defaults.set(newValue, forKey: Keys.hasLaunchedBefore) }
     }
 
+    /// Bump to show the guided setup again after a meaningful change.
+    static let currentOnboardingVersion = 2
+    var onboardingVersion: Int {
+        get { defaults.integer(forKey: Keys.onboardingVersion) }
+        set { defaults.set(newValue, forKey: Keys.onboardingVersion) }
+    }
+    var needsOnboarding: Bool { onboardingVersion < Self.currentOnboardingVersion }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         corner = ScreenCorner(rawValue: defaults.string(forKey: Keys.corner) ?? "") ?? .bottomRight
@@ -69,5 +77,6 @@ final class Settings: ObservableObject {
         static let hideConflictBanner = "hideConflictBanner"
         static let draft = "draft"
         static let hasLaunchedBefore = "hasLaunchedBefore"
+        static let onboardingVersion = "onboardingVersion"
     }
 }

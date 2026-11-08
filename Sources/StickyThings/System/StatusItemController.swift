@@ -6,6 +6,7 @@ final class StatusItemController: NSObject {
     private var item: NSStatusItem?
     var onToggle: ((NSRect, NSScreen) -> Void)?
     var onSettings: (() -> Void)?
+    var onSetup: (() -> Void)?
     var hotKeyDescription: () -> String? = { nil }
 
     func setVisible(_ visible: Bool) {
@@ -44,6 +45,9 @@ final class StatusItemController: NSObject {
         if let shortcut = hotKeyDescription() { open.title += "   \(shortcut)" }
         menu.addItem(open)
         menu.addItem(.separator())
+        let setup = NSMenuItem(title: "Set Up Corner…", action: #selector(openSetup), keyEquivalent: "")
+        setup.target = self
+        menu.addItem(setup)
         let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
@@ -60,6 +64,7 @@ final class StatusItemController: NSObject {
     }
 
     @objc private func openSettings() { onSettings?() }
+    @objc private func openSetup() { onSetup?() }
 
     /// A sticky note with its bottom-right corner folded — drawn so it works as a template image.
     static func templateIcon() -> NSImage {

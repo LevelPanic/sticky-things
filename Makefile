@@ -1,4 +1,4 @@
-.PHONY: app run install test icon clean
+.PHONY: app run install test selftest snapshots icon clean
 
 app:            ## Build build/Sticky Things.app
 	@scripts/build-app.sh
@@ -11,8 +11,14 @@ run: app        ## Build and launch from ./build
 install:        ## Build, copy to /Applications and launch
 	@scripts/build-app.sh --install
 
-test:           ## Run unit tests
+test:           ## Unit tests: core, design system (contrast + lint), app logic
 	@swift test
+
+selftest:       ## Drive the real panel through accessibility (throwaway library)
+	@swift build && .build/debug/StickyThings --selftest
+
+snapshots:      ## Render every screen to build/snapshots
+	@swift build && .build/debug/StickyThings --snapshot build/snapshots
 
 icon:           ## Redraw the app icon
 	@swift scripts/make-icon.swift Resources/AppIcon.icns

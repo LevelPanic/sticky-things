@@ -1,4 +1,6 @@
 import AppKit
+import StickyCore
+import StickyDesign
 import SwiftUI
 
 @MainActor
@@ -77,7 +79,7 @@ final class CornerWindow: NSPanel {
         shrinkWork?.cancel()
         if frame.width < Self.peekSize { setSize(Self.peekSize) }
         guard !isPanelOpen() else { return }
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.68)) { model.phase = .peek }
+        withAnimation(Motion.emphasized) { model.phase = .peek }
         if trigger == .hover {
             dwellTimer?.invalidate()
             dwellTimer = Timer.scheduledTimer(withTimeInterval: max(0.05, hoverDelay), repeats: false) { [weak self] _ in
@@ -93,7 +95,7 @@ final class CornerWindow: NSPanel {
         pointerInside = false
         dwellTimer?.invalidate()
         guard model.phase != .saved else { return }
-        withAnimation(.easeIn(duration: 0.18)) {
+        withAnimation(Motion.standard) {
             model.phase = isPanelOpen() ? .panelOpen : .hidden
         }
         scheduleShrink()
@@ -105,16 +107,16 @@ final class CornerWindow: NSPanel {
     }
 
     private func activate() {
-        withAnimation(.easeOut(duration: 0.15)) { model.phase = .panelOpen }
+        withAnimation(Motion.quick) { model.phase = .panelOpen }
         onActivate?()
     }
 
     /// Keeps the peek in sync when the panel opens/closes from elsewhere.
     func panelVisibilityChanged(_ open: Bool) {
         if open {
-            withAnimation(.easeOut(duration: 0.15)) { model.phase = .panelOpen }
+            withAnimation(Motion.quick) { model.phase = .panelOpen }
         } else {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.7)) {
+            withAnimation(Motion.emphasized) {
                 model.phase = pointerInside ? .peek : .hidden
             }
             if !pointerInside { scheduleShrink() }
@@ -140,22 +142,22 @@ final class CornerWindow: NSPanel {
         shrinkWork?.cancel()
         dwellTimer?.invalidate()
         setSize(Self.dropSize)
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) { model.phase = .dropTarget }
+        withAnimation(Motion.emphasized) { model.phase = .dropTarget }
     }
 
     func dragExited() {
-        withAnimation(.easeIn(duration: 0.18)) { model.phase = .hidden }
+        withAnimation(Motion.standard) { model.phase = .hidden }
         pointerInside = false
         scheduleShrink()
     }
 
     func performDrop(_ pasteboard: NSPasteboard) -> Bool {
         let ok = onDrop?(pasteboard) ?? false
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { model.phase = ok ? .saved : .hidden }
+        withAnimation(Motion.emphasized) { model.phase = ok ? .saved : .hidden }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self, self.model.phase == .saved else { return }
-                withAnimation(.easeIn(duration: 0.25)) { self.model.phase = .hidden }
+                withAnimation(Motion.standard) { self.model.phase = .hidden }
                 self.pointerInside = false
                 self.scheduleShrink(after: 0.3)
             }
@@ -174,7 +176,7 @@ private final class CornerHitView: NSView {
     init(window: CornerWindow) {
         cornerWindow = window
         super.init(frame: .zero)
-        registerForDraggedTypes(Clip.dropTypes)
+        registerForDraggedTypes(DropTypes.all)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -238,14 +240,9 @@ struct CornerPeekView: View {
 
         ZStack(alignment: corner.alignment) {
             Color.clear
-            if model.phase == .dropTarget || model.phase == .saved {
-                RadialGradient(colors: [Color.accentColor.opacity(0.45), Color.accentColor.opacity(0.0)],
-                               center: corner.unitPoint, startRadius: 4, endRadius: CornerWindow.dropSize)
-                    .transition(.opacity)
-            }
             if model.showsNote || model.phase == .dropTarget || model.phase == .saved {
                 ZStack {
-                    MiniStickyNote(size: noteSize, foldCorner: corner.opposite, showLines: model.phase != .dropTarget && model.phase != .saved)
+                    MiniStickyNote(size: noteSize, foldCorner: corner.peekFold, showLines: model.phase != .dropTarget && model.phase != .saved)
                     if model.phase == .dropTarget || model.phase == .saved {
                         Image(systemName: model.phase == .saved ? "checkmark" : arrowSymbol(for: corner))
                             .font(.system(size: 22, weight: .bold))
@@ -255,7 +252,7 @@ struct CornerPeekView: View {
                     }
                 }
                 .rotationEffect(.degrees((corner.isLeft == corner.isTop) ? 12 : -12))
-                .shadow(color: .black.opacity(0.28), radius: 6, x: -sx * 2, y: -sy * 2)
+                .shadow(color: .black.opacity(model.phase == .dropTarget ? 0.32 : 0.22), radius: model.phase == .dropTarget ? 8 : 4, x: -sx * 2, y: -sy * 2)
                 .scaleEffect(model.phase == .dropTarget ? 1.12 : 1, anchor: corner.unitPoint)
                 .offset(x: sx * hiddenBy, y: sy * hiddenBy)
             }

@@ -1,60 +1,95 @@
 import AppKit
+import StickyDesign
 import SwiftUI
 
-/// A tiny Mac screen; click a corner to choose where Sticky Things lives.
+/// A tiny version of *your* screen (your own wallpaper); click a corner to choose it.
+/// `badges` marks corners macOS already uses (e.g. "Quick Note").
 struct CornerPicker: View {
     @Binding var corner: ScreenCorner
+    var badges: [ScreenCorner: String] = [:]
     @State private var hovered: ScreenCorner?
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.m, style: .continuous)
         ZStack {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(LinearGradient(colors: [Color(red: 0.36, green: 0.50, blue: 0.95), Color(red: 0.55, green: 0.32, blue: 0.85)],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-            VStack(spacing: 0) {
-                Rectangle().fill(.white.opacity(0.35)).frame(height: 9)
-                Spacer()
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(.white.opacity(0.35))
-                    .frame(width: 110, height: 14)
-                    .padding(.bottom, 6)
-            }
+            Wallpaper()
             ForEach(ScreenCorner.allCases) { option in
-                cornerButton(option)
+                CornerSpot(option: option, isSelected: option == corner, isHovered: hovered == option, badge: badges[option])
+                    .onHover { inside in withAnimation(Motion.quick) { hovered = inside ? option : nil } }
+                    .onTapGesture { withAnimation(Motion.emphasized) { corner = option } }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: option.alignment)
             }
         }
         .frame(width: 290, height: 182)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.black.opacity(0.25), lineWidth: 3))
-        .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+        .clipShape(shape)
     }
+}
 
-    private func cornerButton(_ option: ScreenCorner) -> some View {
-        let selected = option == corner
-        let sx: CGFloat = option.isLeft ? -1 : 1
-        let sy: CGFloat = option.isTop ? -1 : 1
-        return ZStack(alignment: option.alignment) {
-            Color.clear
-            if selected || hovered == option {
-                MiniStickyNote(size: 44, foldCorner: option.opposite)
-                    .rotationEffect(.degrees(option.isLeft == option.isTop ? 12 : -12))
-                    .shadow(color: .black.opacity(0.3), radius: 3)
-                    .offset(x: sx * (selected ? 14 : 22), y: sy * (selected ? 14 : 22))
-                    .opacity(selected ? 1 : 0.55)
-                    .transition(.offset(x: sx * 30, y: sy * 30).combined(with: .opacity))
-            } else {
-                Circle().fill(.white.opacity(0.25)).frame(width: 14, height: 14)
-                    .padding(8)
+/// The current desktop picture (falls back to a neutral fill).
+struct Wallpaper: View {
+    var body: some View {
+        // Color.clear takes exactly the size it's offered; the photo fills it and is clipped.
+        Color.clear
+            .overlay {
+                if let screen = NSScreen.main, let url = NSWorkspace.shared.desktopImageURL(for: screen),
+                   let image = NSImage(contentsOf: url) {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    Palette.surfaceSunken.color
+                }
             }
+            .clipped()
+    }
+}
+
+private struct CornerSpot: View {
+    let option: ScreenCorner
+    let isSelected: Bool
+    let isHovered: Bool
+    let badge: String?
+
+    var body: some View {
+        ZStack(alignment: option.alignment) {
+            Color.clear
+            if isSelected || isHovered { note } else { ring }
+            if let badge, !isSelected { badgeView(badge) }
         }
         .frame(width: 145, height: 91)
         .contentShape(Rectangle())
-        .onHover { inside in withAnimation(.easeOut(duration: 0.15)) { hovered = inside ? option : nil } }
-        .onTapGesture { withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { corner = option } }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: option.alignment)
-        .help(option.name)
+        .help(badge.map { "\(option.name). macOS uses it for \($0)." } ?? option.name)
+        .accessibilityElement()
         .accessibilityLabel(option.name)
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private var note: some View {
+        let sx: CGFloat = option.isLeft ? -1 : 1
+        let sy: CGFloat = option.isTop ? -1 : 1
+        let inset: CGFloat = isSelected ? 14 : 22
+        return MiniStickyNote(size: 44, foldCorner: option.peekFold)
+            .rotationEffect(.degrees(option.isLeft == option.isTop ? 12 : -12))
+            .elevation(.sticky)
+            .offset(x: sx * inset, y: sy * inset)
+            .opacity(isSelected ? 1 : 0.6)
+    }
+
+    private var ring: some View {
+        Circle()
+            .strokeBorder(.white.opacity(0.85), lineWidth: 1.5)
+            .background(Circle().fill(.black.opacity(0.18)))
+            .frame(width: 14, height: 14)
+            .padding(Space.s + 2)
+    }
+
+    private func badgeView(_ text: String) -> some View {
+        Text(text)
+            .font(TypeScale.caption.weight(.semibold))
+            .foregroundStyle(Palette.warningInk.color)
+            .padding(.horizontal, Space.xs + 1)
+            .padding(.vertical, Space.xxs)
+            .background(Capsule().fill(Palette.warningSurface.color))
+            .padding(option.isTop ? .top : .bottom, Space.s + 16)
+            .padding(option.isLeft ? .leading : .trailing, Space.s)
     }
 }
 

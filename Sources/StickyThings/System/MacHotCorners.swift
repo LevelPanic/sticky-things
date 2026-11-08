@@ -45,10 +45,12 @@ enum MacHotCorners {
         try? killall.run()
     }
 
-    /// Opens System Settings › Desktop & Dock (the Hot Corners… button is at the bottom).
-    static func openSystemSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension") {
-            NSWorkspace.shared.open(url)
-        }
+    /// Opens System Settings › Desktop & Dock scrolled to Hot Corners.
+    /// (The `HotCorners` anchor comes from the pane's own search index, DesktopSettings.searchTerms.)
+    static func openHotCornersSettings() {
+        let deepLink = URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension?HotCorners")
+        let pane = URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension")
+        if let deepLink, NSWorkspace.shared.open(deepLink) { return }
+        if let pane { NSWorkspace.shared.open(pane) }
     }
 }
