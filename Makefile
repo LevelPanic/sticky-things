@@ -1,4 +1,4 @@
-.PHONY: app run install test selftest snapshots icon clean
+.PHONY: app run install test selftest layout snapshots icon clean
 
 app:            ## Build build/Sticky Things.app
 	@scripts/build-app.sh
@@ -16,6 +16,9 @@ test:           ## Unit tests: core, design system (contrast + lint), app logic
 
 selftest:       ## Drive the real panel through accessibility (throwaway library)
 	@swift build && .build/debug/StickyThings --selftest
+
+layout:         ## Open the real panel in every state, check the grid, write captures to build/layout
+	@swift build && .build/debug/StickyThings --layout build/layout
 
 snapshots:      ## Render every screen to build/snapshots
 	@swift build && .build/debug/StickyThings --snapshot build/snapshots

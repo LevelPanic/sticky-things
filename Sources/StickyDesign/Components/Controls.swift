@@ -66,6 +66,30 @@ private struct IconButtonStyle: ButtonStyle {
     }
 }
 
+/// The panel's text fields (search, the composer): 36 pt on one line, radius 18 (a capsule on
+/// one line, the same corners as it grows), a 1 pt border that turns accent with focus. The fill
+/// says the role: raised where things are made (the composer), sunken where they're found (search).
+public struct FieldChrome: ViewModifier {
+    public enum Fill: Sendable { case raised, sunken }
+    let fill: Fill
+    let focused: Bool
+
+    public func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.field, style: .circular)
+        content
+            .frame(minHeight: Metrics.fieldHeight)
+            .background(shape.fill(fill == .raised ? Palette.surfaceRaised.color : Palette.surfaceSunken.color))
+            .overlay(shape.strokeBorder(focused ? Palette.accent.opacity(0.6) : Palette.border.color,
+                                        lineWidth: focused ? 1.5 : 1))
+    }
+}
+
+public extension View {
+    func fieldChrome(_ fill: FieldChrome.Fill, focused: Bool) -> some View {
+        modifier(FieldChrome(fill: fill, focused: focused))
+    }
+}
+
 /// Pressed feedback for larger buttons: darken one step, never scale.
 public struct PressStyle: ButtonStyle {
     public init() {}
@@ -74,7 +98,7 @@ public struct PressStyle: ButtonStyle {
     }
 }
 
-/// Capsule label for pinned items: 24 pt tall, 12 pt medium, ≤ 160 pt wide.
+/// Capsule label for pinned items: one control row tall (28 pt), content 12 pt in, ≤ 160 pt wide.
 public struct Chip: View {
     let title: String
     let symbol: String?
@@ -94,12 +118,11 @@ public struct Chip: View {
             Text(title).font(TypeScale.callout.weight(.medium)).lineLimit(1)
         }
         .foregroundStyle(tint != nil ? TintPalette.ink.color : Palette.textPrimary.color)
-        .padding(.horizontal, Space.s + 2)
-        .frame(height: 24)
+        .padding(.horizontal, Space.m)
+        .frame(height: Metrics.controlRow)
         .frame(maxWidth: 160)
         .background(Capsule().fill(tint?.color ?? Palette.surfaceRaised.color))
         .overlay(Capsule().strokeBorder(isHighlighted ? Palette.accent : .clear, lineWidth: 2))
-        .padding(.vertical, Space.xxs) // 28 pt hit area
         .contentShape(Capsule())
     }
 }
@@ -138,46 +161,58 @@ public struct FilterBar<ID: Hashable>: View {
                         if selected { Text(option.title).font(TypeScale.callout.weight(.medium)) }
                     }
                     .foregroundStyle(selected ? Palette.accent : Palette.textSecondary.color)
-                    .padding(.horizontal, Space.s + 2)
-                    .frame(minWidth: Metrics.minHitTarget + 4, minHeight: Metrics.minHitTarget + 4)
+                    // Icon-only pills are all one square size; the selected one adds its title,
+                    // with its content starting 12 pt in like every other container.
+                    .padding(.horizontal, selected ? Space.m : 0)
+                    .frame(minWidth: Metrics.controlRow, minHeight: Metrics.controlRow)
                     .background(Capsule().fill(selected ? Palette.accent.opacity(0.18) : .clear))
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .help(option.title)
                 .accessibilityLabel(option.title)
+                .accessibilityIdentifier("filter-\(option.title)")
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
     }
 }
 
-/// Sentence-case section label ("Today", "Yesterday").
+/// Sentence-case section label ("Today", "Yesterday"), on the content column (12 pt inside
+/// the cards' edge). A header after other items gets an extra 8 pt above it.
 public struct SectionHeader: View {
     let title: String
-    public init(_ title: String) { self.title = title }
+    let isFirst: Bool
+    public init(_ title: String, isFirst: Bool = false) {
+        self.title = title
+        self.isFirst = isFirst
+    }
     public var body: some View {
         Text(title)
             .font(TypeScale.section)
             .foregroundStyle(Palette.textSecondary.color)
-            .padding(.leading, Space.xs)
-            .padding(.top, Space.l)     // more space above a header…
-            .padding(.bottom, Space.xxs) // …than below it
+            .padding(.leading, Space.m)
+            .padding(.top, isFirst ? 0 : Space.s) // more space above a header than below it
             .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("section-\(title)")
     }
 }
 
-/// One keyboard hint ("⌘V saves what you copied").
+/// One keyboard hint ("⇧↩ new line"): quiet on purpose, in the placeholder tone and one weight,
+/// so it never reads as a button.
 public struct KeyHint: View {
     let key: String
     let label: String
-    public init(_ key: String, _ label: String) {
+    let tone: Color?
+    /// `tone`: pass the paper's secondary ink when the hint sits on a tinted note.
+    public init(_ key: String, _ label: String, tone: Color? = nil) {
         self.key = key
         self.label = label
+        self.tone = tone
     }
     public var body: some View {
-        (Text(key).fontWeight(.semibold) + Text(" " + label))
+        Text(key + " " + label)
             .font(TypeScale.caption)
-            .foregroundStyle(Palette.textSecondary.color)
+            .foregroundStyle(tone ?? Palette.hint)
     }
 }

@@ -53,7 +53,7 @@ enum Snapshot {
         }
 
         for pane in [SettingsPane.corner, .general, .notes] {
-            render(SettingsView(settings: settings, store: store, pane: pane), size: NSSize(width: 720, height: 600),
+            render(SettingsView(settings: settings, store: store, navigation: SettingsNavigation(pane: pane)), size: NSSize(width: 720, height: 560),
                    appearance: .darkAqua, to: folder.appendingPathComponent("settings-\(pane.rawValue).png"))
         }
 

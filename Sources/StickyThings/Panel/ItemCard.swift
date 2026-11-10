@@ -23,7 +23,7 @@ struct ItemCard: View {
 
     var body: some View {
         content
-            .padding(item.kind == .image ? Space.xs + 2 : PanelLayout.cardPadding)
+            .padding(item.kind == .image ? PanelLayout.imageInset : PanelLayout.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .cardSurface(tint: tint, hovered: isHovered, selected: isSelected || isEditing, highlighted: isCopied)
             .contentShape(RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
@@ -31,10 +31,10 @@ struct ItemCard: View {
             // Accessibility: the card is one element with named actions (VoiceOver, the self-test)…
             .accessibilityElement(children: isEditing ? .contain : .ignore)
             .accessibilityLabel("\(item.kind.label), \(item.headline), \(RelativeTime.short(item.createdAt))")
-            .accessibilityHint("Copies to the clipboard")
+            .accessibilityHint(model.clickAction(for: item) == .edit ? "Edits the note" : "Copies to the clipboard")
             .accessibilityAddTraits(.isButton)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
-            .accessibilityAction { model.copy(item) }
+            .accessibilityAction { model.click(item) }
             .accessibilityAction(named: "Copy") { model.copy(item) }
             .accessibilityAction(named: primaryActionName) { model.activate(item) }
             .accessibilityAction(named: item.pinned ? "Unpin" : "Pin") { model.togglePin(item) }
@@ -63,6 +63,14 @@ struct ItemCard: View {
     // MARK: Content
 
     @ViewBuilder private var content: some View {
+        if isEditing {
+            editingContent
+        } else {
+            kindContent
+        }
+    }
+
+    @ViewBuilder private var kindContent: some View {
         switch item.kind {
         case .text, .richText: textContent
         case .link: rowContent(title: item.link?.title ?? item.headline, detail: displayURL)
@@ -75,39 +83,63 @@ struct ItemCard: View {
         }
     }
 
-    @ViewBuilder private var textContent: some View {
-        if isEditing {
+    /// Notes and links edit in place: Return saves, ⇧Return starts a new line, Esc cancels,
+    /// and clicking anywhere else saves too.
+    private var editingContent: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
             InlineTextEditor(
                 initialText: item.text,
                 initialRTF: item.kind == .richText ? richTextData : nil,
                 font: TypeScale.bodyNSFont,
                 textColor: tint == nil ? Palette.textPrimary.nsColor : TintPalette.ink.nsColor,
                 height: $editorHeight,
-                onFinish: { text, rtf in model.finishEditing(item.id, text: text, rtf: rtf) }
+                handle: model.editHandle,
+                onFinish: { text, rtf, ending in model.finishEditing(item.id, text: text, rtf: rtf, ending: ending) }
             )
+            .id(model.editSession)
             .frame(height: editorHeight)
             .accessibilityIdentifier("editor-\(item.id.uuidString)")
-        } else {
-            VStack(alignment: .leading, spacing: Space.s - 2) {
-                Text(item.text)
-                    .font(TypeScale.body)
-                    .lineSpacing(3)
-                    .lineLimit(6)
-                    .foregroundStyle(tint == nil ? Palette.textPrimary.color : TintPalette.ink.color)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .blur(radius: item.concealed && !isHovered && !isSelected ? 6 : 0)
-                meta(item.kind == .richText ? "Formatted" : (item.concealed ? "Hidden until you point at it" : nil))
+            HStack(spacing: Space.s) {
+                if item.kind != .link { KeyHint("⇧↩", "new line", tone: tint.map { _ in TintPalette.inkSecondary.color }) }
+                Spacer(minLength: 0)
+                Button("Cancel") { model.editHandle.cancel() }
+                    .help("Cancel (Esc)")
+                    .accessibilityIdentifier("cancel-\(item.id.uuidString)")
+                Button("Save") { model.editHandle.save() }
+                    .buttonStyle(.borderedProminent)
+                    .help("Save (↩)")
+                    .accessibilityIdentifier("save-\(item.id.uuidString)")
             }
+            .controlSize(.small)
+        }
+        // A click in the card's padding or on the hint stays in the edit.
+        .contentShape(Rectangle())
+        .onTapGesture { model.editHandle.focus() }
+    }
+
+    private var textContent: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            Text(item.text)
+                .font(TypeScale.body)
+                .lineSpacing(3)
+                .lineLimit(6)
+                .foregroundStyle(tint == nil ? Palette.textPrimary.color : TintPalette.ink.color)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .blur(radius: item.concealed && !isHovered && !isSelected ? 6 : 0)
+            meta(item.kind == .richText ? "Formatted" : (item.concealed ? "Hidden until you point at it" : nil))
         }
     }
 
     private var imageContent: some View {
-        VStack(alignment: .leading, spacing: Space.s - 2) {
+        VStack(alignment: .leading, spacing: Space.s) {
             ItemThumbnail(item: item, store: store)
                 .frame(maxWidth: .infinity)
                 .frame(height: imageHeight)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.inner(Radius.l, padding: Space.xs + 2), style: .continuous))
-            meta(imageDetail).padding(.horizontal, Space.s).padding(.bottom, Space.xxs)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.inner(Radius.l, padding: PanelLayout.imageInset), style: .continuous))
+            // Back on the content column and the cards' 12 pt bottom edge.
+            meta(imageDetail)
+                .padding(.horizontal, PanelLayout.cardPadding - PanelLayout.imageInset)
+                .padding(.bottom, PanelLayout.cardPadding - PanelLayout.imageInset)
         }
     }
 
@@ -139,7 +171,7 @@ struct ItemCard: View {
 
     /// "github.com · Safari · 2 min ago" — the trailing part hides while the action bar shows.
     private func meta(_ detail: String?) -> some View {
-        HStack(spacing: Space.xs + 2) {
+        HStack(spacing: Space.xs) {
             if let detail, !detail.isEmpty { Text(detail).lineLimit(1).truncationMode(.middle) }
             Spacer(minLength: Space.xs)
             Group {
@@ -213,7 +245,7 @@ struct ItemCard: View {
 
     private var imageHeight: CGFloat {
         guard let size = item.pixelSize, size.width > 0 else { return 150 }
-        let width = PanelLayout.width - PanelLayout.listPadding * 2 - (Space.xs + 2) * 2
+        let width = PanelLayout.width - PanelLayout.listPadding * 2 - PanelLayout.imageInset * 2
         return min(Metrics.thumbnailMaxHeight, max(72, width * CGFloat(size.height) / CGFloat(size.width)))
     }
 
@@ -249,7 +281,7 @@ struct CardGestures: ViewModifier {
     func body(content: Content) -> some View {
         if enabled {
             content
-                .onTapGesture { model.copy(item) }
+                .onTapGesture { model.click(item) }
                 .simultaneousGesture(TapGesture(count: 2).onEnded { model.activate(item) })
                 .onDrag { PasteboardWriter.itemProvider(for: item, store: model.store) }
                 .contextMenu { CardMenuItems(item: item, model: model, compact: false) }

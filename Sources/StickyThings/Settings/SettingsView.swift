@@ -24,62 +24,56 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 }
 
+/// Which pane Settings shows. The window controller switches it (e.g. "Set Up Corner…").
+@MainActor
+final class SettingsNavigation: ObservableObject {
+    /// Never nil for long: a click on the sidebar's empty space keeps the current pane.
+    @Published var pane: SettingsPane? = .corner {
+        didSet { if pane == nil { pane = oldValue ?? .corner } }
+    }
+    init(pane: SettingsPane = .corner) { self.pane = pane }
+}
+
+/// Settings on the system's own layout, like System Settings: a sidebar, the pane's title in
+/// the toolbar, and grouped forms. Nothing here is positioned by hand, so the sidebar, title and
+/// form line up the way every Mac app's do.
 struct SettingsView: View {
     @ObservedObject var settings: Settings
     @ObservedObject var store: ItemStore
-    @State var pane: SettingsPane = .corner
+    @ObservedObject var navigation: SettingsNavigation
+
+    static let size = CGSize(width: 720, height: 560)
+    static let sidebarWidth: CGFloat = 200
 
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-            Divider()
-            VStack(alignment: .leading, spacing: 0) {
-                Text(pane.title)
-                    .font(TypeScale.display)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 34)
-                Group {
-                    switch pane {
-                    case .corner: CornerSettings(settings: settings)
-                    case .general: GeneralSettings(settings: settings)
-                    case .notes: NotesSettings(settings: settings, store: store)
-                    case .about: AboutSettings(settings: settings)
-                    }
+        NavigationSplitView {
+            List(selection: $navigation.pane) {
+                ForEach(SettingsPane.allCases) { item in
+                    Label(item.title, systemImage: item.symbol)
+                        .tag(item)
+                        .accessibilityIdentifier("pane-\(item.rawValue)")
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .navigationSplitViewColumnWidth(Self.sidebarWidth)
+            .toolbar(removing: .sidebarToggle)
+        } detail: {
+            detail
+                .layoutProbe("settings-detail")
+                .navigationTitle(currentPane.title)
         }
-        .frame(minWidth: 680, minHeight: 500)
-        .background(Palette.surface.color)
+        .coordinateSpace(name: LayoutRegistry.space)
+        .frame(width: Self.size.width, height: Self.size.height)
     }
 
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            ForEach(SettingsPane.allCases) { item in
-                Button { pane = item } label: {
-                    HStack(spacing: Space.s + 1) {
-                        Image(systemName: item.symbol)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(pane == item ? Palette.accent : Palette.textSecondary.color)
-                            .frame(width: 22, height: 22)
-                        Text(item.title).font(TypeScale.body)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: Radius.s + 2, style: .continuous)
-                        .fill(pane == item ? Palette.accent.opacity(0.18) : Color.clear))
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer()
+    private var currentPane: SettingsPane { navigation.pane ?? .corner }
+
+    @ViewBuilder private var detail: some View {
+        switch currentPane {
+        case .corner: CornerSettings(settings: settings)
+        case .general: GeneralSettings(settings: settings)
+        case .notes: NotesSettings(settings: settings, store: store)
+        case .about: AboutSettings(settings: settings)
         }
-        .padding(.horizontal, 10)
-        .padding(.top, 52) // room for the window buttons
-        .frame(width: 200)
-        .frame(maxHeight: .infinity)
-        .background(Palette.surfaceSunken.color)
     }
 }
 
@@ -112,16 +106,13 @@ private struct CornerSettings: View {
     var body: some View {
         Form {
             Section {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 10) {
-                        CornerPicker(corner: $settings.corner, badges: cornerBadges)
-                        Text("Sticky Things lives in the **\(settings.corner.name.lowercased())** corner")
-                            .font(.callout).foregroundStyle(.secondary)
-                    }
-                    Spacer()
+                VStack(spacing: Space.s) {
+                    CornerPicker(corner: $settings.corner, badges: cornerBadges)
+                    Text("Sticky Things lives in the **\(settings.corner.name.lowercased())** corner")
+                        .font(TypeScale.callout).foregroundStyle(.secondary)
                 }
-                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Space.xs)
             }
 
             Section {
@@ -142,7 +133,7 @@ private struct CornerSettings: View {
                 Toggle("Peek a little note when the pointer reaches the corner", isOn: $settings.showPeek)
                 Toggle("Use the corner on every display", isOn: $settings.allDisplays)
             } footer: {
-                Text("Tip: drag a file, image or text onto the corner to stash it without opening anything.")
+                Text("Tip: drag a file, image or text onto the corner to save it without opening anything.")
             }
 
             Section("macOS Hot Corners") {
@@ -162,7 +153,7 @@ private struct CornerSettings: View {
                         Button("Open Hot Corners Settings…") { MacHotCorners.openHotCornersSettings() }
                     }
                     Text("“Turn Off” sets that macOS hot corner to “–” and restarts the Dock. You can change it back any time in System Settings › Desktop & Dock › Hot Corners.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(TypeScale.caption).foregroundStyle(.secondary)
                 } else {
                     Label("No macOS hot corner uses this corner.", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(Palette.success.color)
@@ -196,7 +187,7 @@ private struct GeneralSettings: View {
                         }
                     }
                 if let loginError {
-                    Text(loginError).font(.caption).foregroundStyle(.red)
+                    Text(loginError).font(TypeScale.caption).foregroundStyle(Palette.danger.color)
                 }
                 if LaunchAtLogin.needsApproval {
                     Button("Approve in Login Items…") { LaunchAtLogin.openLoginItemsSettings() }
@@ -234,14 +225,26 @@ private struct NotesSettings: View {
     var body: some View {
         Form {
             Section {
+                Picker("Clicking a note", selection: $settings.clickAction) {
+                    Text("Edits it in place").tag(ClickAction.edit)
+                    Text("Copies it").tag(ClickAction.copy)
+                }
+                .pickerStyle(.radioGroup)
+            } footer: {
+                Text(settings.clickAction == .edit
+                     ? "Links, images and files are copied with a click. To copy a note, use its Copy button or ⌘C."
+                     : "To edit a note, double-click it, use its Edit button, or press ⌘E.")
+            }
+
+            Section {
                 LabeledContent("Saved") {
                     let pinned = store.pinned.count
-                    Text("\(store.items.count) things" + (pinned > 0 ? " · \(pinned) pinned" : ""))
+                    Text("\(store.items.count) \(store.items.count == 1 ? "item" : "items")" + (pinned > 0 ? " · \(pinned) pinned" : ""))
                 }
                 LabeledContent("Space used") {
                     Text(ByteCountFormatter.string(fromByteCount: store.diskUsage, countStyle: .file))
                 }
-                Picker("Keep unpinned things", selection: $settings.retentionDays) {
+                Picker("Keep unpinned items", selection: $settings.retentionDays) {
                     Text("Forever").tag(0)
                     Text("For 1 year").tag(365)
                     Text("For 90 days").tag(90)
@@ -250,7 +253,7 @@ private struct NotesSettings: View {
                 }
                 .onChange(of: settings.retentionDays) { _, days in store.applyRetention(days: days) }
             } footer: {
-                Text("Pinned things are always kept. Everything stays on this Mac, in ~/Library/Application Support/Sticky Things. Files you add are kept as copies (instant APFS clones), so they survive the original being moved or deleted.")
+                Text("Pinned items are always kept. Everything stays on this Mac, in ~/Library/Application Support/Sticky Things. Files you add are kept as copies (instant APFS clones), so they survive the original being moved or deleted.")
             }
 
             Section {
@@ -263,7 +266,7 @@ private struct NotesSettings: View {
             }
         }
         .formStyle(.grouped)
-        .confirmationDialog("Delete all \(store.items.count) things?", isPresented: $confirmDelete) {
+        .confirmationDialog("Delete all \(store.items.count) items?", isPresented: $confirmDelete) {
             Button("Delete Unpinned", role: .destructive) { store.deleteAll(keepPinned: true) }
             Button("Delete Everything", role: .destructive) { store.deleteAll(keepPinned: false) }
         } message: {
@@ -282,16 +285,16 @@ private struct AboutSettings: View {
     var body: some View {
         Form {
             Section {
-                HStack(spacing: 16) {
-                    Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 72, height: 72)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Sticky Things").font(.title2.weight(.semibold))
-                        Text("Version \(version)").foregroundStyle(.secondary)
+                HStack(spacing: Space.l) {
+                    Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 64, height: 64)
+                    VStack(alignment: .leading, spacing: Space.xxs) {
+                        Text("Sticky Things").font(TypeScale.title)
+                        Text("Version \(version)").font(TypeScale.callout).foregroundStyle(.secondary)
                         Text("Quick notes that are actually quick. Click a corner, paste anything.")
-                            .font(.callout).foregroundStyle(.secondary)
+                            .font(TypeScale.callout).foregroundStyle(.secondary)
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, Space.xs)
             }
             Section("In the panel") {
                 shortcut("↩", "Save what you typed · copy the selected note and close")
@@ -316,37 +319,34 @@ private struct AboutSettings: View {
         LabeledContent {
             Text(description).foregroundStyle(.secondary)
         } label: {
-            Text(keys).font(.system(.body, design: .rounded).weight(.semibold)).frame(minWidth: 70, alignment: .leading)
+            Text(keys).font(TypeScale.bodyStrong)
         }
     }
 }
 
 @MainActor
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
-    private let settings: Settings
-    private let store: ItemStore
+    let navigation = SettingsNavigation()
 
     init(settings: Settings, store: ItemStore) {
-        self.settings = settings
-        self.store = store
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 560),
-                              styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
-                              backing: .buffered, defer: false)
-        window.title = "Sticky Things"
-        window.titlebarAppearsTransparent = true
+        let hosting = NSHostingController(rootView: SettingsView(settings: settings, store: store, navigation: navigation))
+        // Let SwiftUI own the toolbar and title, so the pane's title sits in the toolbar and the
+        // sidebar runs full height under the window buttons, like System Settings.
+        hosting.sceneBridgingOptions = [.toolbars, .title]
+        let window = NSWindow(contentViewController: hosting)
+        window.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
         window.toolbarStyle = .unified
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("StickyThingsSettings")
         super.init(window: window)
         window.delegate = self
-        show(pane: .corner, activate: false)
         window.center()
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
     func show(pane: SettingsPane = .corner, activate: Bool = true) {
-        window?.contentView = NSHostingView(rootView: SettingsView(settings: settings, store: store, pane: pane))
+        navigation.pane = pane
         guard activate else { return }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)

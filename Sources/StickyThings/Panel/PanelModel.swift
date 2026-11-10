@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import StickyCore
 import StickyDesign
 import SwiftUI
@@ -42,11 +43,16 @@ final class PanelModel: ObservableObject {
 
     // Editing & composing
     @Published var editingID: UUID?
+    /// The one inline edit that can be open; lets the model save it (a click on empty space).
+    let editHandle = InlineEditHandle()
+    /// New for every edit, so SwiftUI builds a fresh editor instead of reusing a finished one.
+    @Published private(set) var editSession = UUID()
     @Published var composerFocus = 0
     @Published var searchFocus = 0
     @Published var composerHeight: CGFloat = 20
     @Published var searchHeight: CGFloat = 18
     @Published var composerFocused = false
+    @Published var searchFocused = false
 
     // Feedback
     @Published var toast: Toast?
@@ -69,10 +75,43 @@ final class PanelModel: ObservableObject {
     private var undoAction: (() -> Void)?
     private var toastWork: DispatchWorkItem?
 
+    private var draftWatch: AnyCancellable?
+
     init(store: ItemStore, capture: CaptureService, settings: Settings) {
         self.store = store
         self.capture = capture
         self.settings = settings
+        // Starting to write a note means you've stopped browsing.
+        draftWatch = settings.$draft.dropFirst().removeDuplicates().sink { [weak self] draft in
+            MainActor.assumeIsolated {
+                guard let self, !draft.isEmpty, self.selection != nil else { return }
+                self.selection = nil
+            }
+        }
+    }
+
+    // MARK: Where you're working
+    // The selection (the outlined card) is what Return, ⌘C and the card's buttons act on. It
+    // follows where you're working: clicking a card, ↑ ↓ and Edit select it; pointing anywhere
+    // else (the composer, search, empty space), typing a note, or finishing an edit clears it.
+
+    /// You clicked into the composer (its text, or the empty part of its toolbar line).
+    func pointedAtComposer(focus: Bool = false) {
+        selection = nil
+        if focus { composerFocus += 1 }
+    }
+
+    /// You clicked into search.
+    func pointedAtSearch(focus: Bool = false) {
+        selection = nil
+        if focus { searchFocus += 1 }
+    }
+
+    /// You clicked empty space: nothing stays selected, and an open edit is saved, exactly as if
+    /// you'd clicked away from it (the caret then goes back to the composer, like any finished edit).
+    func clickedBackground() {
+        selection = nil
+        if editHandle.isActive { editHandle.save() }
     }
 
     // MARK: Derived
@@ -215,6 +254,21 @@ final class PanelModel: ObservableObject {
     }
 
     /// Double click: edit notes in place, preview files and images, open links.
+    /// What a click on this card does. Notes you can read follow Settings ▸ Notes ▸ Clicking a
+    /// note; links, images, files and hidden password copies can't be edited in place, so a
+    /// click copies them.
+    func clickAction(for item: Item) -> ClickAction {
+        settings.clickAction == .edit && item.kind.isTextual && !item.concealed ? .edit : .copy
+    }
+
+    /// A click on a card (the pointer, or VoiceOver's default action).
+    func click(_ item: Item) {
+        switch clickAction(for: item) {
+        case .edit: beginEditing(item)
+        case .copy: copy(item)
+        }
+    }
+
     func activate(_ item: Item) {
         switch item.kind {
         case .text, .richText: beginEditing(item)
@@ -243,22 +297,34 @@ final class PanelModel: ObservableObject {
 
     func beginEditing(_ item: Item) {
         guard item.kind.isTextual || item.kind == .link else { return }
+        // Already editing it (a double-click, ⌘E again): keep the edit, don't rebuild it.
+        if editingID == item.id {
+            editHandle.focus()
+            return
+        }
         selection = item.id
+        editSession = UUID()
         editingID = item.id
     }
 
-    func finishEditing(_ id: UUID, text: String, rtf: Data?) {
-        guard editingID == id else { return }
-        editingID = nil
-        composerFocus += 1
-        guard let before = store.item(id) else { return }
+    /// Ends an edit. Saving and focus-loss keep the text (even if another card is being edited
+    /// by now, or the panel closed); Cancel discards it. Only keyboard and button endings move
+    /// the caret back to the composer, so clicking into search isn't overridden.
+    func finishEditing(_ id: UUID, text: String, rtf: Data?, ending: InlineTextEditor.Ending = .save) {
+        if editingID == id {
+            editingID = nil
+            if ending != .focusLost { composerFocus += 1 }
+        }
+        // The edit is over, so its card stops being what Return acts on.
+        if selection == id { selection = nil }
+        guard ending != .cancel, let before = store.item(id) else { return }
         let changed = text != before.text || rtf != nil && before.kind != .richText
         guard changed, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         store.setText(id, to: text, rtf: rtf)
         undoAction = { [weak self] in
             self?.store.update(id) { $0 = before }
         }
-        showToast("Note edited", symbol: "pencil", canUndo: true)
+        showToast(before.kind == .link ? "Link saved" : "Note saved", symbol: "checkmark", canUndo: true)
     }
 
     func togglePin(_ item: Item) {
@@ -313,7 +379,13 @@ final class PanelModel: ObservableObject {
     func handleComposerCommand(_ command: KeyCommand) -> Bool {
         switch command {
         case .enter:
-            if let item = selectedItem { copy(item, closeAfter: true) } else { submitComposer() }
+            // Text in the composer always wins: Return saves it, even while a card is selected.
+            if settings.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let item = selectedItem {
+                copy(item, closeAfter: true)
+            } else {
+                selection = nil
+                submitComposer()
+            }
             return true
         case .up: return moveSelection(visualDown: false)
         case .down: return moveSelection(visualDown: true)

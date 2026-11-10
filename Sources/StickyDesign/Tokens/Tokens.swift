@@ -21,7 +21,11 @@ public enum Radius {
     public static let s: CGFloat = 6
     public static let m: CGFloat = 10
     public static let l: CGFloat = 14
-    public static let panel: CGFloat = 24
+    /// Text fields: half the field height, so a one-line field is a capsule and a growing
+    /// composer keeps the same corners.
+    public static let field: CGFloat = Metrics.fieldHeight / 2
+    /// The panel: concentric with the fields that sit one inset from its corners.
+    public static let panel: CGFloat = field + Space.m
     public static func inner(_ outer: CGFloat, padding: CGFloat) -> CGFloat { max(Radius.xs, outer - padding) }
 }
 
@@ -117,5 +121,15 @@ public enum Metrics {
     public static let minHitTarget: CGFloat = 24
     /// HIG default control size; never below `minHitTarget` (WCAG 2.5.8).
     public static let iconButton: CGFloat = 28
+    /// One row of small controls: filter pills, pinned chips, icon buttons.
+    public static let controlRow: CGFloat = iconButton
+    /// Text fields (search, the composer) on one line.
+    public static let fieldHeight: CGFloat = 36
+    /// A field's text or leading icon starts this far in.
+    public static let fieldInset: CGFloat = Space.m
+    /// A trailing button inside a field sits this far from its edges: (36 − 28) / 2 on every side.
+    public static let fieldButtonInset: CGFloat = (fieldHeight - iconButton) / 2
+    /// The leading icon slot in a field (the magnifying glass).
+    public static let fieldIcon: CGFloat = Space.l
     public static let thumbnailMaxHeight: CGFloat = 180
 }

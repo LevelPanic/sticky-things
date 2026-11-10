@@ -68,15 +68,19 @@ All of it lives in `~/Library/Application Support/Sticky Things/`:
 | `PanelController` / `QuickPanel` | A borderless `NSPanel` on system glass (`NSGlassEffectView`). It takes the keyboard without making your current app inactive, like Spotlight. Focus goes back where it was. |
 | `PanelModel` | Every panel action: copy, edit, pin, delete/undo, paste, drop, Quick Look, keyboard. Views only call these, so behavior is unit-tested. |
 | `ItemCard`, `PanelView` | SwiftUI views built from `StickyDesign` components. |
+| `SettingsView` / `SettingsWindowController` | Native Settings: a `NavigationSplitView` sidebar, the pane title in the toolbar, grouped forms. `SettingsNavigation` holds the pane so the menu bar's "Set Up Corner…" can switch to it. |
 | `OnboardingModel` / `OnboardingView` | First run: pick a corner, free it from macOS Hot Corners (live status), then try it once. |
-| `SelfTest`, `Snapshot` | `--selftest` drives the real UI; `--snapshot` renders every screen to PNGs. |
+| `SelfTest`, `LayoutAudit`, `Snapshot` | `--selftest` drives the real UI and checks the grid; `--layout` walks the real panel through every state, captures it and checks `LayoutRules`; `--snapshot` renders every screen to PNGs. |
 
 ### Decisions worth knowing
 
 * **The panel's hit area is solid.** The window ignores no mouse events, and its background is real system glass. Transparent pixels let clicks and hovers fall through to the window behind, which is what broke hover in v1.
 * **The window is the panel's shape.** The content view clips to the rounded corners, so the glass's own shadow can't fill the square corners and make macOS outline a rectangle.
 * **Hover wraps the card's buttons.** `.onHover` sits after the overlay that holds the buttons, so resting on them still counts as hovering the card.
-* **Nothing is hover-only.** Clicking a card copies it *and selects it*, and a selected card keeps its buttons. Every action is also in the right-click menu, a keyboard shortcut and a VoiceOver action.
+* **The selection follows where you're working.** The outlined card is what Return, ⌘C and its buttons act on. Clicking a card, ↑ ↓ and Edit select it. Clicking the composer or search (`KeyTextView.onClick`, sent even when the field already has the keyboard), clicking empty space (a tap on the panel's background, which only fires where nothing else takes the click), typing a note, or finishing an edit clears it. The rule lives in `PanelModel` ("Where you're working"), not in views.
+* **The model owns the open edit.** One `InlineEditHandle` serves the whole list, so a click on empty space can *save* the edit, the same as clicking away, instead of forcing focus somewhere. An editor that finishes late never unhooks the one that replaced it.
+* **A click does one thing, and you choose it.** `PanelModel.click` edits a note in place (the default) or copies it (`Settings.clickAction`); anything that can't be edited in place, or is a hidden password copy, is copied. VoiceOver's default action on a card is the same `click`. Starting an edit you're already in keeps it (no rebuild), so a double-click is harmless.
+* **Nothing is hover-only.** A clicked card is selected (or being edited), and a selected card keeps its buttons. Every action is also in the right-click menu, a keyboard shortcut and a VoiceOver action.
 * **⌘V goes through the main menu's Edit ▸ Paste.** That is how macOS tells a user paste apart from a background read (pasteboard privacy, macOS 15.4+). The app never reads the clipboard on its own.
 * **Focus is deterministic.** When a window becomes key, AppKit focuses the first text field, which would be search. The controller explicitly focuses the composer, and the self-test checks it.
 * **Files are handed out as clones.** Finder's ⌥⌘V *moves* a pasted file, so we never put our stored copy on the clipboard.

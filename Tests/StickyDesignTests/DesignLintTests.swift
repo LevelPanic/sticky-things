@@ -28,6 +28,10 @@ final class DesignLintTests: XCTestCase {
         Rule(name: "No em dashes in UI copy", pattern: #""[^"]*—[^"]*""#),
         Rule(name: "No vague button labels (verb + object)", pattern: #"Button\("(OK|Submit|Yes|No|Okay)""#),
         Rule(name: "No exclamation marks in UI copy", pattern: #""[A-Z][^"\\]*!""#),
+        Rule(name: "Decoration never needs a permission: don't read the desktop picture (it can live in a protected folder)",
+             pattern: #"desktopImageURL"#),
+        Rule(name: "No one-off nudges of tokens (Space.s - 2): use or add a token",
+             pattern: #"\b(Space|Radius|Metrics)\.[a-zA-Z]+ *[-+] *[0-9]"#),
     ]
 
     func testUISourceFollowsTheDesignSystem() throws {

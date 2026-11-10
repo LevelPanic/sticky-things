@@ -39,7 +39,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: Space.l) {
             illustration(highlight: settings.corner, showPointer: false)
             Text("Quick notes that are actually quick").font(TypeScale.display).foregroundStyle(Palette.textPrimary.color)
-            Text("Sticky Things lives in a corner of your screen. Click the corner and throw anything in: a thought, a link, a screenshot, a PDF, a file. Click again and it’s one click to copy back.")
+            Text("Sticky Things lives in a corner of your screen. Click the corner and throw anything in: a thought, a link, a screenshot, a PDF, a file. Click a note to edit it, and copy anything back with one click.")
                 .font(.system(size: 14)).foregroundStyle(Palette.textSecondary.color).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -195,7 +195,7 @@ struct ScreenIllustration: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Radius.m, style: .continuous)
         ZStack(alignment: corner.alignment) {
-            Wallpaper()
+            ScreenPreview()
             MiniStickyNote(size: 46, foldCorner: corner.peekFold)
                 .rotationEffect(.degrees(corner.isLeft == corner.isTop ? 12 : -12))
                 .offset(x: (corner.isLeft ? -1 : 1) * (success ? 12 : 20), y: (corner.isTop ? -1 : 1) * (success ? 12 : 20))

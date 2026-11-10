@@ -62,7 +62,7 @@ public enum CoreError: Error, LocalizedError, Equatable {
         case .database(let message): return "The library couldn’t be saved (\(message))."
         case .nothingToSave: return "There was nothing on the clipboard to save."
         case .tooLarge(let bytes):
-            return "That’s too big to stash (\(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)))."
+            return "That’s too big to save (\(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)))."
         case .missingFile(let name): return "“\(name)” has been moved or deleted."
         }
     }

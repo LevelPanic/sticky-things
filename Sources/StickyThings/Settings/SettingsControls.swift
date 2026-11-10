@@ -2,7 +2,7 @@ import AppKit
 import StickyDesign
 import SwiftUI
 
-/// A tiny version of *your* screen (your own wallpaper); click a corner to choose it.
+/// A tiny drawn screen (`ScreenPreview`); click a corner to choose it.
 /// `badges` marks corners macOS already uses (e.g. "Quick Note").
 struct CornerPicker: View {
     @Binding var corner: ScreenCorner
@@ -12,7 +12,7 @@ struct CornerPicker: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Radius.m, style: .continuous)
         ZStack {
-            Wallpaper()
+            ScreenPreview()
             ForEach(ScreenCorner.allCases) { option in
                 CornerSpot(option: option, isSelected: option == corner, isHovered: hovered == option, badge: badges[option])
                     .onHover { inside in withAnimation(Motion.quick) { hovered = inside ? option : nil } }
@@ -22,23 +22,9 @@ struct CornerPicker: View {
         }
         .frame(width: 290, height: 182)
         .clipShape(shape)
-    }
-}
-
-/// The current desktop picture (falls back to a neutral fill).
-struct Wallpaper: View {
-    var body: some View {
-        // Color.clear takes exactly the size it's offered; the photo fills it and is clipped.
-        Color.clear
-            .overlay {
-                if let screen = NSScreen.main, let url = NSWorkspace.shared.desktopImageURL(for: screen),
-                   let image = NSImage(contentsOf: url) {
-                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    Palette.surfaceSunken.color
-                }
-            }
-            .clipped()
+        .overlay(shape.strokeBorder(Palette.border.color))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("corner-preview")
     }
 }
 
@@ -75,20 +61,20 @@ private struct CornerSpot: View {
 
     private var ring: some View {
         Circle()
-            .strokeBorder(.white.opacity(0.85), lineWidth: 1.5)
-            .background(Circle().fill(.black.opacity(0.18)))
+            .strokeBorder(Palette.borderStrong.color, lineWidth: 1.5)
+            .background(Circle().fill(Palette.surfaceRaised.color))
             .frame(width: 14, height: 14)
-            .padding(Space.s + 2)
+            .padding(Space.m)
     }
 
     private func badgeView(_ text: String) -> some View {
         Text(text)
             .font(TypeScale.caption.weight(.semibold))
             .foregroundStyle(Palette.warningInk.color)
-            .padding(.horizontal, Space.xs + 1)
+            .padding(.horizontal, Space.s)
             .padding(.vertical, Space.xxs)
             .background(Capsule().fill(Palette.warningSurface.color))
-            .padding(option.isTop ? .top : .bottom, Space.s + 16)
+            .padding(option.isTop ? .top : .bottom, Space.xl)
             .padding(option.isLeft ? .leading : .trailing, Space.s)
     }
 }

@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if Snapshot.runIfRequested() { return }
         MainMenu.install()
         if SelfTest.runIfRequested(app: self) { return } // isolated: own library, no corners/menu/hotkey
+        if LayoutAudit.runIfRequested() { return }        // isolated too: sample library
         openLibrary()
 
         panel = PanelController(store: store, capture: capture, settings: settings)

@@ -1,6 +1,7 @@
 import AppKit
 import XCTest
 import StickyCore
+import StickyDesign
 @testable import StickyThings
 
 @MainActor
@@ -100,6 +101,153 @@ final class PanelModelTests: XCTestCase {
         XCTAssertEqual(model.toast?.canUndo, true)
         model.undo()
         XCTAssertEqual(store.item(item.id)?.text, "draft")
+    }
+
+    func testEditEndings() {
+        model.capture.saveNote("draft")
+        let item = store.items[0]
+
+        model.beginEditing(item)
+        let focus = model.composerFocus
+        model.finishEditing(item.id, text: "typo", rtf: nil, ending: .cancel)
+        XCTAssertNil(model.editingID)
+        XCTAssertEqual(store.item(item.id)?.text, "draft", "Cancel discards")
+        XCTAssertEqual(model.composerFocus, focus + 1, "Esc puts the caret back in the composer")
+
+        model.beginEditing(item)
+        let focusBefore = model.composerFocus
+        model.finishEditing(item.id, text: "kept", rtf: nil, ending: .focusLost)
+        XCTAssertNil(model.editingID)
+        XCTAssertEqual(store.item(item.id)?.text, "kept", "clicking elsewhere saves")
+        XCTAssertEqual(model.composerFocus, focusBefore, "the field you clicked keeps the caret")
+
+        // The editor of a card you already left (panel closed, another card being edited) still saves.
+        model.beginEditing(item)
+        model.editingID = nil
+        model.finishEditing(item.id, text: "late", rtf: nil, ending: .focusLost)
+        XCTAssertEqual(store.item(item.id)?.text, "late")
+    }
+
+    func testClickEditsNotesByDefaultAndCopiesEverythingElse() {
+        XCTAssertEqual(model.settings.clickAction, .edit, "editing is the default")
+        model.capture.saveNote("a note")
+        let note = store.items[0]
+        model.click(note)
+        XCTAssertEqual(model.editingID, note.id, "a click edits a note")
+        XCTAssertNil(clipboard.string(forType: .string), "…without copying it")
+        model.finishEditing(note.id, text: "a note", rtf: nil, ending: .cancel)
+
+        model.capture.saveNote("https://example.com/page")
+        let link = store.items[0]
+        model.click(link)
+        XCTAssertNil(model.editingID, "links aren't edited by a click")
+        XCTAssertEqual(clipboard.string(forType: .string), "https://example.com/page", "…they're copied")
+
+        store.update(note.id) { $0.concealed = true }
+        clipboard.clearContents()
+        model.click(store.item(note.id)!)
+        XCTAssertNil(model.editingID, "a hidden password copy never opens in an editor")
+        XCTAssertEqual(clipboard.string(forType: .string), "a note")
+
+        store.update(note.id) { $0.concealed = false }
+        model.settings.clickAction = .copy
+        clipboard.clearContents()
+        model.click(store.item(note.id)!)
+        XCTAssertNil(model.editingID)
+        XCTAssertEqual(clipboard.string(forType: .string), "a note", "with clicks set to copy, a note is copied")
+        XCTAssertEqual(model.selection, note.id, "…and stays selected so its buttons stay visible")
+    }
+
+    func testClickSettingIsRemembered() {
+        let defaults = UserDefaults(suiteName: "PanelModelTests-click-\(UUID().uuidString)")!
+        Settings(defaults: defaults).clickAction = .copy
+        XCTAssertEqual(Settings(defaults: defaults).clickAction, .copy)
+    }
+
+    func testEditingWhatYoureAlreadyEditingKeepsTheEdit() {
+        model.capture.saveNote("draft")
+        let item = store.items[0]
+        model.beginEditing(item)
+        let session = model.editSession
+        model.beginEditing(item) // a double-click on a note that a click already opened
+        XCTAssertEqual(model.editSession, session, "the editor isn't rebuilt")
+        XCTAssertEqual(model.editingID, item.id)
+        model.activate(item)
+        XCTAssertEqual(model.editSession, session)
+    }
+
+    func testSelectionFollowsWhereYouWork() {
+        model.capture.saveNote("a")
+        let item = store.items[0]
+
+        model.copy(item)
+        XCTAssertEqual(model.selection, item.id, "clicking a card selects it")
+        model.pointedAtComposer()
+        XCTAssertNil(model.selection, "clicking the composer clears it")
+
+        model.copy(item)
+        let searchFocus = model.searchFocus
+        model.pointedAtSearch(focus: true)
+        XCTAssertNil(model.selection, "clicking search clears it")
+        XCTAssertEqual(model.searchFocus, searchFocus + 1, "clicking the search field's icon focuses its text")
+
+        model.copy(item)
+        model.clickedBackground()
+        XCTAssertNil(model.selection, "clicking empty space clears it")
+
+        model.copy(item)
+        model.settings.draft = "now I'm writing"
+        XCTAssertNil(model.selection, "typing a note clears it")
+
+        // Browsing with ↑ while a draft exists still selects (the draft didn't change).
+        XCTAssertTrue(model.moveSelection(visualDown: false) || model.moveSelection(visualDown: true))
+        XCTAssertNotNil(model.selection)
+    }
+
+    func testFinishingAnEditClearsItsOutline() {
+        model.capture.saveNote("draft")
+        let item = store.items[0]
+        for ending in [InlineTextEditor.Ending.save, .cancel, .focusLost] {
+            model.beginEditing(item)
+            XCTAssertEqual(model.selection, item.id)
+            model.finishEditing(item.id, text: "draft", rtf: nil, ending: ending)
+            XCTAssertNil(model.selection, "\(ending) leaves no outline behind")
+        }
+        // Starting another card's edit doesn't deselect it when the first edit finishes late.
+        model.capture.saveNote("other")
+        let other = store.items[0]
+        model.beginEditing(item)
+        model.beginEditing(other)
+        model.finishEditing(item.id, text: "draft", rtf: nil, ending: .focusLost)
+        XCTAssertEqual(model.selection, other.id)
+        XCTAssertEqual(model.editingID, other.id)
+    }
+
+    func testEditingALinkKeepsItALink() {
+        model.capture.saveNote("https://example.com/a")
+        let item = store.items[0]
+        XCTAssertEqual(item.kind, .link)
+        model.beginEditing(item)
+        model.finishEditing(item.id, text: "https://example.com/b", rtf: nil, ending: .save)
+        XCTAssertEqual(store.item(item.id)?.kind, .link)
+        XCTAssertEqual(store.item(item.id)?.link?.url, "https://example.com/b")
+    }
+
+    func testReturnInComposerSavesTextEvenWithASelection() {
+        model.capture.saveNote("old")
+        model.selection = store.items[0].id
+        model.settings.draft = "new note"
+        XCTAssertTrue(model.handleComposerCommand(.enter))
+        XCTAssertEqual(store.items.first?.text, "new note", "typed text is saved, not the selected card copied")
+        XCTAssertNil(model.selection)
+        XCTAssertNil(clipboard.string(forType: .string))
+
+        model.selection = store.items[1].id
+        var closed = false
+        model.close = { closed = true }
+        XCTAssertTrue(model.handleComposerCommand(.enter))
+        XCTAssertEqual(clipboard.string(forType: .string), "old", "empty composer: Return copies the selection")
+        XCTAssertTrue(closed)
     }
 
     func testDeleteSelectsNeighbourAndUndoRestores() {

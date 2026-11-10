@@ -1,6 +1,12 @@
 import AppKit
 import Combine
 
+/// What a click on a note does (Settings ▸ Notes ▸ Clicking a note).
+enum ClickAction: String, CaseIterable, Identifiable {
+    case edit, copy
+    var id: String { rawValue }
+}
+
 /// User preferences, stored in UserDefaults.
 @MainActor
 final class Settings: ObservableObject {
@@ -29,6 +35,8 @@ final class Settings: ObservableObject {
     /// Delete unpinned notes after this many days (0 = never).
     @Published var retentionDays: Int { didSet { defaults.set(retentionDays, forKey: Keys.retentionDays) } }
     @Published var hideConflictBanner: Bool { didSet { defaults.set(hideConflictBanner, forKey: Keys.hideConflictBanner) } }
+    /// Clicking a note edits it in place (the default) or copies it.
+    @Published var clickAction: ClickAction { didSet { defaults.set(clickAction.rawValue, forKey: Keys.clickAction) } }
     /// Unsaved text in the composer survives closing the panel and relaunching.
     @Published var draft: String { didSet { defaults.set(draft, forKey: Keys.draft) } }
 
@@ -61,6 +69,7 @@ final class Settings: ObservableObject {
         fetchLinkPreviews = defaults.object(forKey: Keys.fetchLinkPreviews) as? Bool ?? true
         retentionDays = defaults.object(forKey: Keys.retentionDays) as? Int ?? 0
         hideConflictBanner = defaults.bool(forKey: Keys.hideConflictBanner)
+        clickAction = ClickAction(rawValue: defaults.string(forKey: Keys.clickAction) ?? "") ?? .edit
         draft = defaults.string(forKey: Keys.draft) ?? ""
     }
 
@@ -75,6 +84,7 @@ final class Settings: ObservableObject {
         static let fetchLinkPreviews = "fetchLinkPreviews"
         static let retentionDays = "retentionDays"
         static let hideConflictBanner = "hideConflictBanner"
+        static let clickAction = "clickAction"
         static let draft = "draft"
         static let hasLaunchedBefore = "hasLaunchedBefore"
         static let onboardingVersion = "onboardingVersion"

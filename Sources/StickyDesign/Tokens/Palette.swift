@@ -37,6 +37,12 @@ public enum Palette {
 
     /// Interactive tint: the user's system accent color, like every Mac app.
     public static var accent: Color { Color(nsColor: .controlAccentColor) }
+
+    /// Hints ("⇧↩ new line"): the same tone as a text field's placeholder, so guidance reads as
+    /// guidance, not as a control. It's the system placeholder color, which strengthens with
+    /// Increase Contrast; at least 3:1 on the surfaces hints sit on (checked by ContrastTests).
+    public static var hint: Color { Color(nsColor: hintNSColor) }
+    public static var hintNSColor: NSColor { .placeholderTextColor }
 }
 
 /// Sticky-note papers for notes. Light .92 / dark .84 lightness, chroma ≤ .075, dark ink.

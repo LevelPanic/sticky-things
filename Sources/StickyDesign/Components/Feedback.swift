@@ -30,8 +30,8 @@ public struct ToastView: View {
             }
         }
         .foregroundStyle(Palette.textOnInverse.color)
-        .padding(.horizontal, Space.m + 2)
-        .frame(minHeight: 32)
+        .padding(.horizontal, Space.m)
+        .frame(minHeight: Space.xxl)
         .background(Capsule().fill(Palette.surfaceInverse.color))
         .elevation(.lifted)
         .accessibilityElement(children: .contain)

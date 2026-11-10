@@ -12,6 +12,13 @@ public final class StickyTextView: NSTextView {
     /// Return true to swallow the paste (it was saved as a note instead).
     public var onPaste: ((NSPasteboard) -> Bool)?
     public var onFocusChange: ((Bool) -> Void)?
+    /// The pointer clicked in this field (even if it already had the keyboard).
+    public var onClick: (() -> Void)?
+
+    public override func mouseDown(with event: NSEvent) {
+        onClick?()
+        super.mouseDown(with: event)
+    }
 
     public override func paste(_ sender: Any?) {
         if let onPaste, onPaste(NSPasteboard.general) { return }
@@ -48,6 +55,14 @@ public final class StickyTextView: NSTextView {
 
 /// SwiftUI wrapper around `StickyTextView` that grows with its content.
 public struct KeyTextView: NSViewRepresentable {
+    /// Space above and below the text inside the view.
+    static let textInset: CGFloat = 2
+
+    /// Height of the view holding one line of text at this size, so fields can center it.
+    public static func singleLineHeight(fontSize: CGFloat) -> CGFloat {
+        ceil(NSLayoutManager().defaultLineHeight(for: .systemFont(ofSize: fontSize)) + textInset * 2)
+    }
+
     @Binding public var text: String
     @Binding public var height: CGFloat
     public var placeholder: String
@@ -59,13 +74,15 @@ public struct KeyTextView: NSViewRepresentable {
     public var onCommand: (KeyCommand) -> Bool
     public var onPaste: ((NSPasteboard) -> Bool)? = nil
     public var onFocusChange: ((Bool) -> Void)? = nil
+    /// The pointer clicked in the field (a click says where you're working, focused or not).
+    public var onClick: (() -> Void)? = nil
     /// Lets the window find this field (e.g. to focus the composer when the panel opens).
     public var identifier: String? = nil
 
     public init(text: Binding<String>, height: Binding<CGFloat>, placeholder: String, fontSize: CGFloat = 14,
                 maxLines: Int = 6, singleLine: Bool = false, focusToken: Int,
                 onCommand: @escaping (KeyCommand) -> Bool, onPaste: ((NSPasteboard) -> Bool)? = nil,
-                onFocusChange: ((Bool) -> Void)? = nil, identifier: String? = nil) {
+                onFocusChange: ((Bool) -> Void)? = nil, onClick: (() -> Void)? = nil, identifier: String? = nil) {
         self._text = text
         self._height = height
         self.placeholder = placeholder
@@ -76,6 +93,7 @@ public struct KeyTextView: NSViewRepresentable {
         self.onCommand = onCommand
         self.onPaste = onPaste
         self.onFocusChange = onFocusChange
+        self.onClick = onClick
         self.identifier = identifier
     }
 
@@ -103,7 +121,7 @@ public struct KeyTextView: NSViewRepresentable {
         textView.placeholderFont = .systemFont(ofSize: fontSize)
         textView.textColor = .labelColor
         textView.insertionPointColor = .controlAccentColor
-        textView.textContainerInset = NSSize(width: 0, height: 2)
+        textView.textContainerInset = NSSize(width: 0, height: Self.textInset)
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
@@ -113,12 +131,13 @@ public struct KeyTextView: NSViewRepresentable {
         textView.identifier = identifier.map { NSUserInterfaceItemIdentifier(rawValue: $0) }
         textView.onPaste = onPaste
         textView.onFocusChange = onFocusChange
+        textView.onClick = onClick
         textView.string = text
         if singleLine { container.maximumNumberOfLines = 1; container.lineBreakMode = .byTruncatingTail }
 
         let scroll = NSScrollView()
         scroll.drawsBackground = false
-        scroll.hasVerticalScroller = !singleLine
+        scroll.hasVerticalScroller = false // only once the text outgrows maxLines (see recalculateHeight)
         scroll.autohidesScrollers = true
         scroll.scrollerStyle = .overlay
         scroll.borderType = .noBorder
@@ -134,6 +153,7 @@ public struct KeyTextView: NSViewRepresentable {
         guard let textView = coordinator.textView else { return }
         textView.onPaste = onPaste
         textView.onFocusChange = onFocusChange
+        textView.onClick = onClick
         if textView.placeholder != placeholder { textView.placeholder = placeholder }
         if textView.string != text {
             textView.string = text
@@ -174,6 +194,10 @@ public struct KeyTextView: NSViewRepresentable {
             let used = layout.usedRect(for: container).height
             let lines = parent.singleLine ? 1 : parent.maxLines
             let target = min(max(used, lineHeight), lineHeight * CGFloat(lines)) + textView.textContainerInset.height * 2
+            let overflows = !parent.singleLine && used > lineHeight * CGFloat(lines) + 0.5
+            if let scroll = textView.enclosingScrollView, scroll.hasVerticalScroller != overflows {
+                scroll.hasVerticalScroller = overflows
+            }
             let rounded = ceil(target)
             if abs(parent.height - rounded) > 0.5 { parent.height = rounded }
         }

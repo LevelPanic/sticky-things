@@ -3,11 +3,28 @@ import StickyCore
 import StickyDesign
 import SwiftUI
 
+/// The panel's grid. Containers run from `inset` to `width − inset`; their content starts
+/// `cardPadding` in (the content column, x = 24); blocks are `gap` apart.
 enum PanelLayout {
     static let width: CGFloat = 372
-    static let listPadding: CGFloat = Space.m
+    /// Margin on every side of the panel.
+    static let inset: CGFloat = Space.m
+    /// Between blocks (header rows, pinned strip, list, composer) and between cards.
+    static let gap: CGFloat = Space.s
+    static let listPadding: CGFloat = inset
     static let cardPadding: CGFloat = Space.m
+    /// Image cards frame their picture with a thinner edge; their caption still sits on the
+    /// content column (inset + this + caption padding = cardPadding).
+    static let imageInset: CGFloat = Space.s
     static var cardContentWidth: CGFloat { width - listPadding * 2 - cardPadding * 2 }
+    /// The composer: its text starts this far below the field's top edge…
+    static let composerTopInset: CGFloat = Space.s
+    /// …and sits this far above the toolbar line.
+    static let composerLineGap: CGFloat = Space.xxs
+    /// The composer with one line of text: text, gap, toolbar, and the buttons' 4 pt inset.
+    static func composerMinHeight(singleLine: CGFloat) -> CGFloat {
+        composerTopInset + singleLine + composerLineGap + Metrics.controlRow + Metrics.fieldButtonInset
+    }
 }
 
 enum RelativeTime {

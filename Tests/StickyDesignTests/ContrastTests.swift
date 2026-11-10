@@ -22,6 +22,36 @@ final class ContrastTests: XCTestCase {
         assertContrast(Palette.accentOnInverse, on: Palette.surfaceInverse, atLeast: 4.5, "toast action")
     }
 
+    /// Hints use the system placeholder tone: quieter than secondary text, never below 3:1.
+    func testHintsStayReadableButQuiet() {
+        for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            // Hints sit on the composer and on untinted cards (tinted notes use their own ink).
+            for (surfaceName, surface) in [("raised", Palette.surfaceRaised), ("raised hover", Palette.surfaceRaisedHover)] {
+                let background = name == "light" ? surface.light : surface.dark
+                let hint = Self.resolve(Palette.hintNSColor, in: appearance, over: background)
+                let ratio = Contrast.ratio(hint, background)
+                XCTAssertGreaterThanOrEqual(ratio, 3, "hint on \(surfaceName) (\(name)) is \(String(format: "%.2f", ratio)):1")
+                let secondary = Contrast.ratio(name == "light" ? Palette.textSecondary.light : Palette.textSecondary.dark, background)
+                XCTAssertLessThan(ratio, secondary, "hint should be quieter than secondary text on \(surfaceName) (\(name))")
+            }
+        }
+    }
+
+    /// A dynamic system color as an opaque hex over a background, in one appearance.
+    private static func resolve(_ color: NSColor, in appearance: NSAppearance.Name, over background: UInt32) -> UInt32 {
+        var result: UInt32 = 0
+        NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
+            let c = color.usingColorSpace(.sRGB)!
+            let a = c.alphaComponent
+            func mix(_ fg: CGFloat, _ shift: UInt32) -> UInt32 {
+                let bg = CGFloat((background >> shift) & 0xFF) / 255
+                return UInt32(((fg * a + bg * (1 - a)) * 255).rounded()) << shift
+            }
+            result = mix(c.redComponent, 16) | mix(c.greenComponent, 8) | mix(c.blueComponent, 0)
+        }
+        return result
+    }
+
     func testInkOnStickyPaper() {
         assertContrast(Palette.paperInk, on: Palette.paper, atLeast: 7, "ink on paper")
         assertContrast(Palette.paperInkSecondary, on: Palette.paper, atLeast: 4.5, "secondary ink on paper")

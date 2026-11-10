@@ -17,8 +17,8 @@ Sticky Things replaces macOS's Quick Note hot corner. Click the bottom-right cor
   - photos, Mail attachments, and private app data like Figma layers
 
   Everything is kept losslessly, so it comes back out exactly as it went in.
-- **Get it back in one click.** Click a card to copy it. Its buttons stay put (Copy, Edit or Quick Look, More). Drag a card into any app, or press ↑ then ↩ to copy and close.
-- **Edit in place.** Double-click a note to edit it right there in the card, formatting included. Edits can be undone.
+- **Edit in place.** Click a note to edit it right there in the card, formatting included. Return or Save keeps the change, Esc cancels, and clicking anywhere else keeps it too. Saved edits can be undone. Rather have a click copy notes? Settings ▸ Notes ▸ Clicking a note.
+- **Get it back in one click.** Click a link, image or file to copy it, or use any card's Copy button (or ⌘C). Drag a card into any app, or press ↑ then ↩ to copy and close.
 - **Throw at the corner.** Drop something on the corner itself to save it without opening anything.
 - **Find it again.** Search, filter (Notes · Links · Images · Files), pin favorites (⌘1–⌘9), and preview anything with Space (Quick Look).
 
@@ -54,6 +54,7 @@ macOS doesn't let apps add themselves to the Hot Corners menu, so Sticky Things 
 | **↑ ↓** | Browse; **↩** copies the selected item and closes |
 | **Space** | Quick Look |
 | **⌘E**, **⌘O**, **⌘P**, **⌘⌫** | Edit, open, pin, delete (**⌘Z** to undo) |
+| While editing: **↩** / **⇧↩** / **Esc** | Save / new line / cancel |
 | **⌘1–⌘9** | Copy a pinned item and close |
 | **⌘F** / **Esc** | Search / step back, then close |
 
@@ -75,8 +76,9 @@ Three Swift modules, each with its own tests:
 | [docs/TESTING.md](docs/TESTING.md) | Unit tests, design lint, the UI self-test, snapshots, and the manual drag matrix |
 
 ```bash
-make test        # 29 unit tests (core, design system, app logic)
+make test        # 39 unit tests (core, design system, app logic)
 make selftest    # drives the real panel through accessibility (throwaway library)
+make layout      # checks every panel state against the design grid, with captures
 make snapshots   # renders every screen to build/snapshots
 ```
 

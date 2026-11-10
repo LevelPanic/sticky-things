@@ -32,6 +32,7 @@ enum SelfTest {
     }
 
     static func run() async {
+        LayoutRegistry.isRecording = true
         let paths = StorePaths.temporary()
         defer { try? FileManager.default.removeItem(at: paths.root) }
         guard let store = try? ItemStore(paths: paths, inMemory: true) else { return check(false, "open a library") }
@@ -60,9 +61,11 @@ enum SelfTest {
         } else {
             check(false, "capture the panel window")
         }
+        checkGrid(window, "the empty panel follows the grid")
+        check(AX.find("composer-hint") != nil && AX.find("send") != nil, "the composer's toolbar shows the ⇧↩ hint and Save")
 
         // Typing a note and pressing Return saves it.
-        guard let composer = PanelController.findTextView("composer", in: window.contentView) else {
+        guard var composer = PanelController.findTextView("composer", in: window.contentView) else {
             return check(false, "composer exists")
         }
         window.makeFirstResponder(composer)
@@ -84,13 +87,35 @@ enum SelfTest {
         guard let note = store.items.first(where: { $0.kind == .text }) else { return check(false, "note exists") }
         let id = note.id.uuidString
 
-        // One click on a card copies it (its default action, as the pointer and VoiceOver use).
+        // A click edits a note in place by default (Settings ▸ Notes ▸ Clicking a note), the
+        // same action the pointer and VoiceOver use; anything that can't be edited is copied.
         if let card = AX.find("card-\(id)") {
             check(AX.press(card), "card responds to a click")
+            await wait(0.5)
+            check(model.editingID == note.id && window.firstResponder is EditorTextView, "a click edits a note in place (the default)")
+            check(clipboard.string(forType: .string) == nil, "…without copying it")
+            (window.firstResponder as? EditorTextView)?.doCommand(by: #selector(NSResponder.cancelOperation(_:)))
+            await wait(0.4)
+        } else {
+            check(false, "card is in the accessibility tree")
+        }
+        if let image = store.items.first(where: { $0.kind == .image }), let imageCard = AX.find("card-\(image.id.uuidString)") {
+            AX.press(imageCard)
+            await wait(0.3)
+            check(clipboard.data(forType: .png) != nil && model.editingID == nil, "a click on an image copies it")
+        }
+
+        // With clicks set to copy, one click copies the note and keeps it selected.
+        settings.clickAction = .copy
+        await wait(0.2)
+        clipboard.clearContents()
+        if let card = AX.find("card-\(id)") {
+            check(AX.press(card), "card responds to a click in copy mode")
             await wait(0.3)
             check(clipboard.string(forType: .string) == "Call Sam at 4:30", "one click copies the note")
             check(model.copiedID == note.id, "card shows Copied")
             check(model.selection == note.id, "clicked card stays selected (its buttons stay visible)")
+            checkGrid(window, "the panel with items follows the grid")
         } else {
             check(false, "card is in the accessibility tree")
         }
@@ -105,22 +130,132 @@ enum SelfTest {
         } else {
             check(false, "Copy button is reachable")
         }
+        var expected = "Call Sam at 4:30"
+        func editorTyping(_ text: String) -> EditorTextView? {
+            guard let editor = window.firstResponder as? EditorTextView else { return nil }
+            editor.insertText(text, replacementRange: NSRange(location: (editor.string as NSString).length, length: 0))
+            return editor
+        }
+        func editAgain() async {
+            if let current = store.item(note.id) { model.beginEditing(current) }
+            await wait(0.5)
+        }
+
+        // Edit in place: Save and Cancel are right there, Return saves.
         if let edit = AX.find("edit-\(id)") {
             AX.press(edit)
             await wait(0.5)
             check(model.editingID == note.id, "Edit button starts editing in place")
-            if let editor = window.firstResponder as? EditorTextView {
-                editor.insertText(" (moved to 5)", replacementRange: NSRange(location: (editor.string as NSString).length, length: 0))
-                editor.doCommand(by: #selector(NSResponder.cancelOperation(_:)))
+            check(AX.find("save-\(id)") != nil && AX.find("cancel-\(id)") != nil, "editing shows Save and Cancel")
+            checkGrid(window, "the editing card follows the grid")
+            if let shot = WindowCapture.image(of: window) { WindowCapture.saveIfRequested(shot, name: "editing") }
+            if let editor = editorTyping(" (moved to 5)") {
+                editor.doCommand(by: #selector(NSResponder.insertNewline(_:)))
                 await wait(0.4)
-                check(store.item(note.id)?.text == "Call Sam at 4:30 (moved to 5)", "inline edit is saved")
-                check(model.editingID == nil, "Esc finishes editing")
+                expected += " (moved to 5)"
+                check(store.item(note.id)?.text == expected, "Return saves the edit")
+                check(model.editingID == nil, "Return ends editing")
+                check(focusedIdentifier(window) == "composer", "the caret goes back to the composer")
             } else {
                 check(false, "inline editor takes the keyboard")
             }
         } else {
             check(false, "Edit button is reachable")
         }
+
+        // Esc cancels: the change is thrown away and the panel stays open.
+        await editAgain()
+        if let editor = editorTyping(" (typo)") {
+            editor.doCommand(by: #selector(NSResponder.cancelOperation(_:)))
+            await wait(0.4)
+            check(store.item(note.id)?.text == expected && model.editingID == nil && controller.isShown,
+                  "Esc cancels the edit")
+        } else {
+            check(false, "editing again takes the keyboard")
+        }
+
+        // The Save button saves.
+        await editAgain()
+        if editorTyping(", room 2") != nil, let save = AX.find("save-\(id)") {
+            AX.press(save)
+            await wait(0.4)
+            expected += ", room 2"
+            check(store.item(note.id)?.text == expected && model.editingID == nil, "Save button saves the edit")
+        } else {
+            check(false, "Save button is reachable")
+        }
+
+        // Clicking into the composer mid-edit ends the edit (typed or not) and keeps the text.
+        for typed in ["", " sharp"] {
+            await editAgain()
+            _ = editorTyping(typed)
+            window.makeFirstResponder(composer) // what a click in the composer does
+            await wait(0.4)
+            expected += typed
+            check(model.editingID == nil && store.item(note.id)?.text == expected,
+                  typed.isEmpty ? "clicking the composer ends an untouched edit" : "clicking the composer keeps the edit")
+        }
+        check(window.firstResponder === composer, "the clicked composer keeps the caret")
+        composer.insertText("Buy milk", replacementRange: composer.selectedRange())
+        composer.doCommand(by: #selector(NSResponder.insertNewline(_:)))
+        await wait(0.4)
+        check(store.items.first?.text == "Buy milk" && controller.isShown,
+              "after an edit, Return in the composer saves the new note")
+
+        // Closing the panel mid-edit keeps what was typed.
+        await editAgain()
+        _ = editorTyping(" (call back)")
+        controller.hide()
+        await wait(0.5)
+        expected += " (call back)"
+        check(store.item(note.id)?.text == expected && model.editingID == nil, "closing the panel keeps the edit")
+        controller.show(.corner(screen, .bottomRight))
+        await wait(0.7)
+
+        // The outline follows where you're working: a real click in the composer or search,
+        // or typing a note, clears it.
+        if let card = AX.find("card-\(id)"), let search = PanelController.findTextView("search", in: window.contentView) {
+            AX.press(card)
+            await wait(0.3)
+            Pointer.click(composer, in: window)
+            await wait(0.3)
+            check(model.selection == nil && window.firstResponder === composer, "clicking the composer clears the card's outline")
+
+            AX.press(card)
+            await wait(0.3)
+            Pointer.click(search, in: window)
+            await wait(0.3)
+            check(model.selection == nil && window.firstResponder === search, "clicking search clears the card's outline")
+
+            window.makeFirstResponder(composer)
+            AX.press(card)
+            await wait(0.3)
+            composer.insertText("B", replacementRange: composer.selectedRange())
+            await wait(0.2)
+            check(model.selection == nil, "typing a note clears the card's outline")
+            composer.selectAll(nil)
+            composer.deleteBackward(nil)
+            await wait(0.2)
+        } else {
+            check(false, "card and search are reachable")
+        }
+
+        // Ending an edit by clicking the composer clears the edited card's outline too.
+        await editAgain()
+        Pointer.click(composer, in: window)
+        await wait(0.4)
+        check(model.editingID == nil && model.selection == nil, "clicking the composer ends an edit and clears its outline")
+
+        // A click on empty space saves an open edit, clears the outline and returns to the composer.
+        // (The click itself needs a real pointer; this is the action it runs.)
+        await editAgain()
+        _ = editorTyping(", confirmed")
+        model.clickedBackground()
+        await wait(0.4)
+        expected += ", confirmed"
+        check(store.item(note.id)?.text == expected && model.editingID == nil && model.selection == nil
+              && window.firstResponder === composer,
+              "empty space saves the edit, clears the outline and returns to the composer")
 
         // Named actions (right-click menu / VoiceOver): Delete, Undo, Pin.
         await wait(0.3)
@@ -144,7 +279,7 @@ enum SelfTest {
                 if clipboard.string(forType: .string) == nil {
                     print("  · chip press=\(pressed) actions=\(AX.actions(chip)) clipboard=\(clipboard.types ?? [])")
                 }
-                check(clipboard.string(forType: .string) == "Call Sam at 4:30 (moved to 5)", "pinned chip copies with one click")
+                check(clipboard.string(forType: .string) == expected, "pinned chip copies with one click")
             } else {
                 check(false, "pinned chip appears")
             }
@@ -159,9 +294,18 @@ enum SelfTest {
         await wait(0.5)
         check(!controller.isShown, "Return copies and closes")
 
+        // From a top corner the composer sits under the header; same grid.
+        controller.show(.corner(screen, .topRight))
+        await wait(0.7)
+        checkGrid(window, "the panel from a top corner follows the grid")
+        controller.hide()
+        await wait(0.4)
+
         // Quick Look previews a stored image; the panel stays open behind it.
         controller.show(.corner(screen, .bottomRight))
         await wait(0.6)
+        // Switching corners moves the composer, so SwiftUI made a new text view for it.
+        if let current = PanelController.findTextView("composer", in: window.contentView) { composer = current }
         if let image = store.items.first(where: { $0.kind == .image }) {
             model.quickLook(image)
             await wait(1.2)
@@ -181,6 +325,14 @@ enum SelfTest {
         check(!controller.isShown, "second Esc closes the panel")
     }
 
+    /// Measures the real panel and checks it against `LayoutRules` (docs/DESIGN.md, Panel grid).
+    private static func checkGrid(_ window: NSWindow, _ name: String) {
+        let problems = LayoutRules.violations(LayoutProbe.frames(in: window), panelWidth: window.frame.width,
+                                              panelHeight: window.frame.height)
+        check(problems.isEmpty, name)
+        for problem in problems { print("    \(problem)") }
+    }
+
     private static func focusedIdentifier(_ window: NSWindow) -> String? {
         (window.firstResponder as? NSView)?.identifier?.rawValue
     }
@@ -190,6 +342,23 @@ enum SelfTest {
             NSColor.systemTeal.setFill(); rect.fill(); return true
         }
         return NSBitmapImageRep(data: image.tiffRepresentation!)!.representation(using: .png, properties: [:])!
+    }
+}
+
+/// Real clicks for AppKit views (the text fields). AppKit views accept synthesized events;
+/// SwiftUI controls don't, which is why those go through accessibility instead.
+@MainActor
+enum Pointer {
+    static func click(_ view: NSView, in window: NSWindow) {
+        let point = view.convert(NSPoint(x: view.bounds.midX, y: view.bounds.midY), to: nil)
+        func event(_ type: NSEvent.EventType) -> NSEvent? {
+            NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                               windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                               pressure: type == .leftMouseDown ? 1 : 0)
+        }
+        guard let down = event(.leftMouseDown), let up = event(.leftMouseUp) else { return }
+        NSApp.postEvent(up, atStart: false) // ends the text view's click-tracking loop
+        window.sendEvent(down)
     }
 }
 
