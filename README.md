@@ -48,7 +48,7 @@ It is built for the kind of thing you need for ten seconds: a Wi-Fi password, a 
 You need macOS 14 or newer and Xcode 16 or newer with the Swift 6 toolchain.
 
 ```bash
-git clone <this repository>
+git clone https://github.com/LevelPanic/sticky-things.git
 cd sticky-things
 make install
 ```
@@ -160,7 +160,7 @@ Known limits:
 
 ## Credits
 
-Built by **Muhtasham Nawaz**.
+Built by **[Muhtasham Nawaz](https://github.com/LevelPanic)**.
 
 Inspired by [StickyEdges](https://github.com/utsavg05/StickyEdges), and by every note that got lost in a browser tab.
 
