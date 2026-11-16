@@ -1,15 +1,16 @@
 # Testing
 
-Six layers, from fastest to most realistic. None of them need Accessibility or Screen Recording permission, and none touch your real library or clipboard. The self-test and the layout audit open real windows: run them on an unlocked Mac and don't type or click while they run.
+Seven layers, from fastest to most realistic. The Mac layers use throwaway libraries and private pasteboards; the iOS layer builds the app and its extensions. The Mac self-test and layout audit open real windows: run them on an unlocked Mac and don't type or click while they run.
 
 ```bash
 make test        # 1–3: 46 unit tests (core, design, app logic)
-make selftest    # 4: drives the real panel window (57 checks, behavior + the grid)
-make layout      # 5: every panel state, light and dark, checked against the grid, with captures
-make snapshots   # 6: renders every screen to build/snapshots
+make selftest    # 4: drives the real Mac panel window (57 checks, behavior + the grid)
+make layout      # 5: every Mac panel state, light and dark, checked against the grid, with captures
+make snapshots   # 6: renders every Mac screen to build/snapshots
+make ios-build   # 7: builds the iOS app, Share extension and Control widget
 ```
 
-## 1. Core (`Tests/StickyCoreTests`)
+## 1. Core (`packages/StickyCore/Tests/StickyCoreTests`)
 
 These cover everything about capture and storage, using private pasteboards (`NSPasteboard(name:)`) and temporary folders.
 
@@ -38,13 +39,13 @@ These cover everything about capture and storage, using private pasteboards (`NS
   * one-time v1 import
   * duplicate pastes
 
-## 2. Design system (`Tests/StickyDesignTests`)
+## 2. Design system (`packages/StickyDesign/Tests/StickyDesignTests`)
 
 * **`ContrastTests`:** WCAG ratios for every token pair, in light and dark.
 * **`DesignLintTests`:** fails the build on design drift (see [DESIGN.md](DESIGN.md)).
 * **`InlineEditHandleTests`:** a late editor never unhooks the one that replaced it; two platform views for the same edit leave the survivor in charge; an editor from another edit is not treated as a duplicate.
 
-## 3. App logic (`Tests/StickyThingsTests`)
+## 3. App logic (`apps/macos/Tests/StickyThingsTests`)
 
 `PanelModel` without any UI:
 
@@ -102,6 +103,34 @@ These cover everything about capture and storage, using private pasteboards (`NS
 ## 6. Snapshots (`StickyThings --snapshot <folder>`)
 
 These render the panel (light and dark, full and empty), every onboarding step, Settings panes and the corner states. Sample data goes through the real capture code and includes captions on the image and PDF. Glass can't be rendered offscreen, so snapshots use a flat surface.
+
+## 7. iOS (`apps/ios`)
+
+`make ios-build` compiles the iOS app, its Share extension and the Control widget for the simulator without signing. The shared `StickyCore` unit tests from layer 1 run on the Mac and cover the same storage and item code the iOS app uses.
+
+**Simulator smoke test.** Build, install into an iPhone simulator, and launch with these debug arguments:
+
+```bash
+xcrun simctl install booted "build/ios/Build/Products/Debug-iphonesimulator/Sticky Things.app"
+xcrun simctl launch booted app.stickythings.StickyThings --demo
+xcrun simctl launch booted app.stickythings.StickyThings --composer
+xcrun simctl launch booted app.stickythings.StickyThings --detail
+```
+
+`--demo` seeds a throwaway library, `--composer` opens the quick capture sheet, and `--detail` opens an item's detail screen. The current screenshots in `docs/ios-*.png` come from this path.
+
+**Manual device pass.** The system parts do not exist in the simulator:
+
+* **Action Button:** Settings ▸ Action Button ▸ Controls ▸ Sticky Things ▸ New Sticky Thing. Press it from the Lock Screen and from the Home Screen; the composer should appear without an "Open in Sticky Things?" prompt, and the keyboard should be up.
+* **Control Center and Lock Screen:** add the New Sticky Thing control to both.
+* **Share sheet:** share a link from Safari, text from Notes, a photo from Photos, a PDF from Files and a large file from another app. Each should save into the same library and appear in the app.
+* **Siri and Shortcuts:** "New sticky thing in Sticky Things" opens the composer. "Save to Sticky Things" with text saves while the app stays closed.
+* **Spotlight:** save a note, search for it from the Home Screen, tap the result. The item detail should open. A concealed copy must not appear.
+* **Paste:** copy text/image on the Mac or iPhone and tap the system Paste button in the composer.
+* **Quick Look and Share:** open an item detail, preview an image/PDF, and share a file through the system sheet.
+* **iPad:** drag a link from Safari, a photo from Photos and a file from Files into the list; drag a row out to another app; use ⌘N to open the composer.
+* **App Group:** install the app and share extension with the `group.app.stickythings` capability, save from the share sheet, and confirm the item is in the app. Without the capability the extension falls back to its own container.
+* **Dynamic Type and dark mode:** raise the text size and switch appearance; controls and cards should reflow without clipping.
 
 ## Manual pass (each release)
 

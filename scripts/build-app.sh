@@ -17,9 +17,9 @@ for arg in "$@"; do
   esac
 done
 
-if [[ ! -f Resources/AppIcon.icns ]]; then
+if [[ ! -f apps/macos/Resources/AppIcon.icns ]]; then
   echo "› Drawing app icon"
-  swift scripts/make-icon.swift Resources/AppIcon.icns
+  swift scripts/make-icon.swift apps/macos/Resources/AppIcon.icns
 fi
 
 echo "› Compiling (release)"
@@ -35,8 +35,8 @@ echo "› Assembling ${APP}"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/StickyThings"
-cp Resources/Info.plist "$APP/Contents/Info.plist"
-cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp apps/macos/Resources/Info.plist "$APP/Contents/Info.plist"
+cp apps/macos/Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
 echo "› Signing (ad-hoc)"

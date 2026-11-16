@@ -6,7 +6,7 @@ Sticky Things follows [Impeccable](https://impeccable.style) in its **Operate** 
 * the corner peek
 * the drop into the corner
 
-Everything lives in `Sources/StickyDesign`. Views never use raw values, and two tests enforce that (below).
+Everything lives in `packages/StickyDesign`. Views never use raw values, and two tests enforce that (below).
 
 ## Tokens
 
@@ -77,6 +77,18 @@ Every measurement in the panel comes from this grid. `LayoutRules` (in `App/Layo
 * **Field chrome belongs to the field:** clicking a field's icon, padding or toolbar line puts the caret in its text. Clicking an inline editor's padding keeps the edit.
 * **Captions belong to media and documents.** A card for an image, PDF, file, folder, color or app data shows a speech-bubble button instead of Edit. It opens a caption editor on the content column; Return or Save keeps it, Esc cancels, and clicking elsewhere saves. ⌘⇧E does the same from the keyboard, and the right-click menu can add, edit or remove the caption. Notes and links don't get one: their text is the item.
 * **Empty space is neutral:** it clears the selection and saves an open edit (like clicking away), and the caret goes back to the composer only when an edit ended.
+
+## iOS design
+
+The iOS app is a separate design, not the Mac panel squeezed onto a phone. It follows the iOS HIG and leans on system surfaces:
+
+* **Library.** A native large-title screen with a search field, pinned and recent sections, inset card rows, context menus and swipe actions. Sticky tints remain the brand surface, but the layout, type and controls are iOS.
+* **Quick capture.** A full-screen sheet with a text editor focused on appearance, the system `PasteButton`, a paperclip menu for Photos and Files, and one prominent Save button. No Mac-style floating panel, no custom paste prompt.
+* **System entry points.** The control uses the system control style and a specific display name, "New Sticky Thing". App Shortcuts use short titles and SF Symbols. The share extension is a single native screen with one Save action, per the share extension guidelines.
+* **System components over custom ones.** `ContentUnavailableView` for empty search and filters, `ShareLink`/`UIActivityViewController` for sharing, Quick Look for previews, PhotosPicker and fileImporter for capture, `.searchable`, sheets and confirmation dialogs for the rest.
+* **Adaptive by default.** Semantic colors support dark mode, system text styles support Dynamic Type, touch targets stay at least 44 pt, and iPad gets keyboard shortcuts, drag and drop, and a wider reading layout without a bespoke phone-only layout.
+* **Detail.** The item detail screen uses a large preview, a caption block, metadata, and a short action row (Copy, Share, Edit, Quick Look, Delete). It is the destination for Spotlight results and context-menu "Show Details".
+* **Copy rules are shared.** The Mac glossary still applies: item, note, caption, Save, Delete, Pin. The iOS app uses Share (not "Send to") for the system share sheet, and "New Sticky Thing" for the create action.
 
 ## Settings
 

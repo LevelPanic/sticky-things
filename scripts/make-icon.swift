@@ -1,9 +1,9 @@
 #!/usr/bin/env swift
 // Draws the Sticky Things app icon and writes an .icns file.
-// Usage: swift scripts/make-icon.swift Resources/AppIcon.icns
+// Usage: swift scripts/make-icon.swift apps/macos/Resources/AppIcon.icns
 import AppKit
 
-let output = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "Resources/AppIcon.icns"
+let output = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "apps/macos/Resources/AppIcon.icns"
 
 func color(_ hex: UInt32, _ alpha: CGFloat = 1) -> NSColor {
     NSColor(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,

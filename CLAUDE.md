@@ -1,6 +1,6 @@
 # Sticky Things: notes for the next session
 
-A native macOS menu-bar app that replaces Apple's Quick Note hot corner. Click a screen corner (or press ⌃⌥N), a panel opens from it, and you can paste or drag in anything, copy it back in one click, and edit notes in place. The owner treats it as a real product: "quick notes that are actually quick", intuitive like Bartender.
+A native quick-capture app for macOS and iOS. On Mac it replaces Apple's Quick Note hot corner: click (or press ⌃⌥N), a panel opens, and you can paste or drag in anything. On iPhone it is built around the Action Button, Control Center, Lock Screen, share sheet, Siri, Shortcuts and Spotlight. Both apps share one library format. The owner treats it as a real product: "quick notes that are actually quick", intuitive like Bartender.
 
 Keep this file current. After any change that moves the status, the known gaps or the conventions below, update this file (and the docs it points to) in the same commit.
 
@@ -10,9 +10,9 @@ Keep this file current. After any change that moves the status, the known gaps o
 |---|---|
 | [README.md](README.md) | What the user sees, keys, install |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Modules, data flow, storage layout, key decisions |
-| [docs/PLATFORM.md](docs/PLATFORM.md) | macOS pasteboard, drag, file promise, privacy, focus and Hot Corners behavior, and how we handle each |
-| [docs/DESIGN.md](docs/DESIGN.md) | Design tokens, components, writing rules, what the lint test enforces |
-| [docs/TESTING.md](docs/TESTING.md) | The six test layers (unit, design, app logic, self-test, layout audit, snapshots) and the manual pass |
+| [docs/PLATFORM.md](docs/PLATFORM.md) | macOS pasteboard, drag, file promise, privacy, focus and Hot Corners behavior; iOS Share extensions, App Groups, paste privacy and system entry points |
+| [docs/DESIGN.md](docs/DESIGN.md) | Mac design tokens, components, writing rules; the iOS design approach; what the lint test enforces |
+| [docs/TESTING.md](docs/TESTING.md) | The seven test layers (unit, design, app logic, self-test, layout audit, snapshots, iOS build) and the manual pass |
 
 ## Commands
 
@@ -23,21 +23,25 @@ make layout      # every panel state and Settings pane, light and dark: rules + 
 make snapshots   # renders every screen to build/snapshots (offscreen, flat surface instead of glass)
 make install     # release build, copy to /Applications, relaunch (scripts/build-app.sh --install)
 make run         # build and launch from ./build
-make icon        # redraw Resources/AppIcon.icns + .png
+make icon        # redraw apps/macos/Resources/AppIcon.icns + .png
+make ios-project # regenerate apps/ios/StickyThings.xcodeproj from project.yml
+make ios-build   # build the iOS app, Share extension and Control widget
+make ios-open    # open the iOS project in Xcode
 ```
 
-Before calling work done: `make test`, `make selftest` and (for any visual change) `make layout` all green, look at the captures in `build/layout`, then `make install` so the user is running the latest build.
+Before calling Mac work done: `make test`, `make selftest` and (for any visual change) `make layout` all green, look at the captures in `build/layout`, then `make install` so the user is running the latest build. Before calling iOS work done: `make ios-build` succeeds, then run the simulator smoke path in docs/TESTING.md. The Action Button and Control Center need a signed device.
 
 ## Layout
 
-- `Sources/StickyCore`: items, lossless pasteboard capture, SQLite + content-addressed blob store, file library (APFS clones), clipboard and drag output. No SwiftUI.
-- `Sources/StickyDesign`: tokens (`Tokens.swift`, `Palette.swift`) and shared components. No app logic.
-- `Sources/StickyThings`: the app. `App/` (delegate, `SelfTest`, `LayoutAudit` + `LayoutRules`, `Snapshot`), `Panel/`, `Corner/`, `Onboarding/`, `Settings/`, `System/`.
-- `Tests/<Module>Tests` mirror the three modules.
+- `packages/StickyCore`: items, lossless capture model, SQLite + content-addressed blob store, file library (APFS clones), clipboard and drag output on Mac. The model and storage layers are cross-platform; AppKit capture/output and UIKit `NSItemProvider` capture are conditional. No SwiftUI.
+- `packages/StickyDesign`: tokens (`Tokens.swift`, `Palette.swift`) and shared components. macOS-only for now.
+- `apps/macos`: the macOS app. `Sources/StickyThings/` holds `App/` (delegate, `SelfTest`, `LayoutAudit` + `LayoutRules`, `Snapshot`), `Panel/`, `Corner/`, `Onboarding/`, `Settings/`, `System/`; `Resources/` holds the bundle files.
+- `apps/ios`: `Sources/StickyThingsIOS` (app), `Sources/StickyThingsWidgets` (Control widget), `Sources/StickyThingsShare` (Share extension), `Sources/Shared` (App Intents used by app + widget); `project.yml` generates the checked-in Xcode project.
+- `packages/<Module>/Tests` and `apps/macos/Tests` mirror the Mac modules. iOS currently has no XCTest target; its shared core is covered by StickyCoreTests, and the system surfaces need the manual device pass.
 
-Toolchain on the owner's Mac: macOS 26.1 (Apple Silicon), Xcode 26.1, Swift 6.2.1. SwiftPM with Swift 5 language mode, deployment target macOS 14. Bundle id `app.stickythings.StickyThings`, URL scheme `stickythings://` (`open`, `toggle`, `settings`, `setup`, `add?text=`).
+Toolchain on the owner's Mac: macOS 26.1 (Apple Silicon), Xcode 26.1, Swift 6.2.1, iOS simulator 26.0 available. SwiftPM with Swift 5 language mode, deployment targets macOS 14 and iOS 18. Bundle id `app.stickythings.StickyThings` (same on both platforms), URL scheme `stickythings://` (`open`, `toggle`, `settings`, `setup`, `add?text=`), App Group `group.app.stickythings`.
 
-User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqlite`, `blobs/`, `files/`, `staging/`); caches and the outbox in `~/Library/Caches/app.stickythings/`. Never point tests or the self-test at the real library.
+Mac user data lives in `~/Library/Application Support/Sticky Things/` (`library.sqlite`, `blobs/`, `files/`, `staging/`); caches and the outbox in `~/Library/Caches/app.stickythings/`. iOS uses `group.app.stickythings/Sticky Things/`. Never point tests or the self-test at the real library.
 
 ## Conventions
 
@@ -48,6 +52,11 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 - **Clicks:** a card click goes through `PanelModel.click` (never call `copy` from a card's tap directly). It edits notes by default or copies them (`Settings.clickAction`, Settings ▸ Notes); links, images, files and concealed items always copy. `beginEditing` on the card already being edited keeps the edit.
 - **Captions** are `Item.caption`, separate from the lossless snapshot. Media/documents (image, PDF, file, folder, files, color, other) get a speech-bubble button, ⌘⇧E, a right-click item and a VoiceOver action; notes and links do not. The editor is the same `InlineTextEditor`, with its own `captionEditHandle` and `captionEditSession`.
 - **Corner drags** have two speeds: release quickly to save directly, hold for `Settings.dragOpenDelay` to shake and open the panel. `DragSessionWatcher` polls the pressed button and pointer because AppKit has no global drag notification; corners only grow to `dragTriggerArea` while that says a drag is in progress. A drag-open uses `PanelController.showForDrop` and must not make the panel key or activate the app.
+- **iOS is a platform-native design, not the Mac panel stretched.** Use the HIG: `List`, `.searchable`, sheets, context menus, swipe actions, `ContentUnavailableView`, system share sheet, Quick Look, PhotosPicker and fileImporter. The Mac grid does not apply. Shared copy rules still do.
+- **iOS system entry points are required.** The Action Button, Control Center and Lock Screen control use `OpenStickyThingIntent` (an `OpenIntent` in `Sources/Shared`, target membership both the app and the widget extension), never a custom URL, so iOS does not prompt "Open in Sticky Things?". It writes `QuickCaptureFlag` in the App Group; the app consumes it on launch/active and opens the composer. Home Screen quick actions, App Shortcuts/Siri and Spotlight have their own entry points.
+- **iOS extensions share the App Group.** The app, Share extension and Control widget use `group.app.stickythings`; `StickyAppGroup.paths` is the only storage entry point. The Share extension normalizes providers with `ItemProviderCapture` and saves through the shared `CaptureService`. Never give an extension its own database path.
+- **iOS paste is user-initiated.** Use SwiftUI's system `PasteButton`; never read `UIPasteboard` in the background. Share extensions and pickers are the permission-free way to receive content.
+- **The iOS project is generated.** Edit `apps/ios/project.yml`, Sources and Resources, then run `make ios-project` and commit the regenerated `StickyThings.xcodeproj`. Do not hand-edit the pbxproj.
 - **Nothing hover-only.** Every action is reachable by click (selected cards keep their buttons), right-click menu, keyboard shortcut and a named VoiceOver action.
 - **Accessibility modifiers go before overlays** on a view, or the overlay's buttons disappear from the accessibility tree (this broke VoiceOver and the self-test once).
 - **New UI behavior gets a self-test check** in `App/SelfTest.swift` (find by `accessibilityIdentifier`, act with AX press or named actions). New capture or storage behavior gets a `StickyCoreTests` case using a private `NSPasteboard(name:)` and a temp folder.
@@ -73,10 +82,18 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 - Reading the desktop picture triggered a Files & Folders prompt (the owner's wallpaper lives under ~/Desktop). Anything that touches user files outside our library can prompt; check before adding it.
 - Long SwiftUI expressions hit type-checker timeouts. Split them into small views or helper functions.
 - Photos, Mail, Safari images and Preview pages arrive as file promises (`NSFilePromiseReceiver`), not file URLs.
+- **XcodeGen's `info:` block generates and overwrites the plist at that path.** Keep custom plists in `apps/ios/Resources` and point `INFOPLIST_FILE` at them instead. This silently stripped `NSExtension` and the URL scheme once.
+- A custom URL scheme opened from the shell or a control can show an "Open in Sticky Things?" confirmation on iOS. Controls use `OpenStickyThingIntent` (`OpenIntent`, target membership app + widget) and an App Group flag instead. Keep the URL scheme for automation and links, not for the Action Button.
+- Share extensions and widget extensions are separate processes. They see nothing in the app sandbox; the App Group entitlements and `StickyAppGroup.paths` are mandatory. An unsigned simulator build may not share the container, so test the Share extension with a signed build.
+- The Action Button and Control Center picker do not exist in the simulator. Build and test the control there, but assign it on a device.
+- `quickLookPreview` lives in the QuickLook-exported SwiftUI module on iOS; add `import QuickLook`.
+- A wide image in a ScrollView can widen the entire detail layout. Give thumbnails `.frame(maxWidth: .infinity)` before a fixed height and clip them; `.scaledToFill` alone will overflow.
+- The iOS simulator screenshots in `docs/` are made with `--demo`, `--composer` and `--detail` launch arguments, not by interacting with the UI.
 
 ## Working in this environment
 
 - Claude's sandbox here can't post input events (`CGPreflightPostEventAccess` is false) or screenshot other apps. It *can* capture the app's own windows (`WindowCapture` in `SelfTest.swift`; `STICKY_SELFTEST_CAPTURES=<folder> make selftest` saves them), which is how to check real glass, corners and layout.
+- iOS builds work headlessly with Xcode 26.1. `make ios-build` builds the app and extensions; `xcrun simctl boot 'iPhone 17 Pro'`, install the `.app` from `build/ios/Build/Products/Debug-iphonesimulator`, and launch with `--demo`, `--composer` or `--detail` for screenshots. `xcrun simctl io 'iPhone 17 Pro' screenshot <path>` captures them. Action Button, Control Center and Share sheet pickers need a device or UI interaction.
 - SwiftUI hover reads the real cursor, so synthetic mouse moves can't test it. Ask the owner to check hover and drags from other apps.
 - Never change the owner's system settings (Hot Corners, `com.apple.dock` defaults) yourself. The onboarding's "Turn Off Quick Note" button is for the owner to press.
 - Commit only when asked. Keep personal content (the owner's wallpaper, notes, paths) out of committed docs and screenshots.
@@ -84,10 +101,10 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 ## How the owner works
 
 - Reports problems with annotated screenshots from real use, and expects the root cause fixed properly ("not a jugaad", no forcing), verified before it's called done, and tested so it can't come back (mutation-test new checks: break the fix, see the check fail, restore).
-- Design bar: "line for line, column for column", a real design system, consistent proportions and whitespace; native macOS where the system already does it.
+- Design bar: "line for line, column for column", a real design system, consistent proportions and whitespace; native macOS and iOS where the system already does it. Each platform should feel purposely designed for it, not ported.
 - Wants this file, the docs and memory kept current with every change, and commits only when asked.
 
-## Status (2026-11-12)
+## Status (2026-11-16)
 
 - **v1** (commit `51b29ac`): first working corner panel, JSON storage.
 - **v2** (commit "Sticky Things v2: throw in anything…", 2026-11-08): three-module restructure, lossless capture of anything, SQLite storage with one-time v1 import, one-click copy, edit in place, Quick Look, drag out, Impeccable-based design system with contrast and lint tests, guided Hot Corners setup, new icon, accessibility-driven self-test. Installed in /Applications and running; the owner's 2 v1 notes migrated; the owner turned off their bottom-right Quick Note hot corner.
@@ -100,10 +117,15 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 - **v2.7** (2026-11-08, owner's request): a click on a note edits it in place by default; Settings ▸ Notes ▸ "Clicking a note" switches to copying. Links, images, files and hidden password copies always copy. Fixed: starting an edit you're already in rebuilt the editor (a double-click would have ended the edit).
 - **v2.8** (2026-11-08, owner: Settings asked for a permission and had design issues): the corner preview is drawn (`ScreenPreview`, accent-tinted desktop) instead of reading the wallpaper from ~/Desktop, so no Files & Folders prompt; lint bans `desktopImageURL`. Settings rebuilt on native layout (sidebar, title in the toolbar, grouped forms) with tokens and glossary wording; `make layout` captures and checks every pane.
 - **v2.9** (2026-11-12, owner's request): holding a drag in the corner now shakes the note and opens the panel after a configurable delay (default 0.6 s), after growing a configurable catch area (Small 44 / Medium 72 / Large 120 pt). A quick drop still saves directly. `DragSessionWatcher` supplies the missing global drag signal by sampling the pressed button and pointer. Images, PDFs, files, folders, colors and app data can now carry a searchable, undoable caption: card button, ⌘⇧E, right-click menu, VoiceOver action, and the inline editor. Fixed the inline editor's duplicate platform-view bug (a growing card in a lazy list built two; a zero-width copy stole focus and height) with token-aware `InlineEditHandle` tracking and readiness gating.
+- **v3.0** (2026-11-16, owner's request): the repo is now a monorepo with `apps/macos`, `apps/ios`, `packages/StickyCore` and `packages/StickyDesign`. The macOS app is unchanged apart from its paths; its tests, self-test and layout audit still pass. `StickyCore` now builds on iOS with the AppKit capture and output behind `#if os(macOS)`. The new iOS app uses the same SQLite library in the App Group `group.app.stickythings`, with an Action Button / Control Center / Lock Screen control, a Share extension, Siri and Shortcuts intents, Spotlight indexing, system Paste, Quick Look, share sheet, context menus, swipe actions, iPad drag and drop, and a native list/composer/detail design. The control uses a real `OpenIntent` plus an App Group flag, so no URL confirmation. iOS simulator screenshots are in `docs/ios-*.png`. XcodeGen owns the checked-in iOS project.
 
-**Waiting on the owner:** confirm the drag-to-open feel in real use (shake, delay, area sizes, quick drop vs hold, dropping into the panel from Finder/Preview/Photos), caption editing on images and documents (button, ⌘⇧E, wrapping, click-away save, Remove + Undo), and the earlier open questions: click-to-edit, clicking empty space clears the outline, the layout and two-line composer, the Save/Cancel bar, hover buttons, round corners, first click after opening, and the drag matrix in docs/TESTING.md (Finder, Preview, Photos, Safari, Mail, Notes, screenshot thumbnail, 1Password).
+**Waiting on the owner:** the iPhone system pass: assign the control to the Action Button, add it to Control Center, share a link/photo/PDF through the Share extension, ask Siri/Shortcuts, tap a Spotlight result, and test on an iPad. Earlier Mac questions still stand: drag-to-open feel, caption editing, click-to-edit, empty-space outline, layout/composer, Save/Cancel bar, hover buttons, round corners, and the drag matrix in docs/TESTING.md.
 
 **Known gaps (candidates for next):**
+- No iCloud/CloudKit sync between the Mac library and the iOS App Group library yet.
+- The iOS app has no XCTest target; the shared core is covered by `StickyCoreTests`, and the system surfaces need the device pass.
+- The iOS Share extension and widget require the App Group capability to be provisioned for device builds; unsigned simulator builds may not share the container.
+- Action Button, Control Center and the Share sheet picker cannot be driven from the simulator or this headless environment.
 - The onboarding window looks consistent but isn't covered by `LayoutRules` or `make layout` (only offscreen snapshots).
 - The tap on empty space can't be automated (SwiftUI ignores synthesized clicks); the self-test runs the action it triggers.
 - Dragging a multi-file item out carries only the first file (copying gives all of them).

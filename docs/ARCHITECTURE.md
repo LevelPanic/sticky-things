@@ -1,11 +1,12 @@
 # Architecture
 
-Sticky Things is three Swift modules. Each layer only depends on the ones above it, and each has its own tests.
+Sticky Things is a monorepo. A shared Swift core powers the Apple apps, while each app uses the native UI and system surfaces of its platform. A future Windows or Android app can read the same SQLite schema and blob layout without adopting SwiftUI.
 
 ```text
-StickyCore      items, lossless capture, storage, clipboard output        (no SwiftUI)
-StickyDesign    tokens + components (the design system)                   (no app logic)
-StickyThings    the app: corner, panel, onboarding, settings, menu bar
+packages/StickyCore      items, lossless capture model, SQLite, blobs, files   (no SwiftUI; macOS + iOS)
+packages/StickyDesign    tokens + components                                  (macOS design system)
+apps/macos               the Mac app: corner, panel, onboarding, settings, menu bar
+apps/ios                 the iPhone app, Share extension and Control widget
 ```
 
 ## The one idea: capture losslessly, give back exactly
@@ -32,6 +33,8 @@ PasteboardWriter                                  replays every item and type in
                                                   handed out as fresh clones from an outbox
 ```
 
+The diagram shows the Mac path. On iOS the same `CapturedClip` comes from `ItemProviderCapture` (share sheet, drop, Paste button) and output goes through the system share sheet, Quick Look, copy and paste, not `PasteboardWriter`.
+
 * **`Item`** (`StickyCore/Model/Item.swift`)
   * `kind` decides how the item is drawn.
   * `snapshot` is the lossless pasteboard copy, as `[SnapshotItem]`, each holding `[Representation(type, blob)]`.
@@ -47,19 +50,20 @@ PasteboardWriter                                  replays every item and type in
 
 ## Storage
 
-All of it lives in `~/Library/Application Support/Sticky Things/`:
+The Mac library lives in `~/Library/Application Support/Sticky Things/`. The iOS app and its Share extension use the same layout inside the App Group container `group.app.stickythings/Sticky Things/`.
 
 | Path | What |
 |---|---|
 | `library.sqlite` | One row per item: indexed columns (id, created, pinned, kind) plus the full item as JSON. WAL mode; every change is its own transaction. |
 | `blobs/ab/abcdef…` | Content-addressed data. Two items with the same screenshot share one file. |
 | `files/<item-id>/<original name>` | Copies of stashed files. On the same APFS volume this is a clone: instant, and no extra space until one side changes. |
-| `staging/` | File promises being received (Photos, Mail, Safari images, Preview pages). |
+| `staging/` | File promises being received (Photos, Mail, Safari images, Preview pages), and iOS share providers that arrive as data. |
 | `notes-v1-imported.json` | The version 1 notes file, kept after the one-time import. |
 
-* **Caches** (`~/Library/Caches/app.stickythings/`) can be deleted at any time. They hold Quick Look temp files, drag files and **outbox** clones.
+* **Caches** (`~/Library/Caches/app.stickythings/` on Mac, the app's temporary directory on iOS) can be deleted at any time. They hold Quick Look temp files, drag files and **outbox** clones.
 * **Garbage collection** runs at launch. It removes blobs and file folders that no item references, and an hour of grace keeps undo safe.
 * **Retention** (Settings ▸ Notes) deletes unpinned items older than N days.
+* **iOS App Group.** The app, Share extension, and Control widget are separate processes. The Entitlements files declare `group.app.stickythings`; `StickyAppGroup.paths` is the single entry point that keeps them on the same library. Without the capability, each process falls back to its own Application Support folder.
 
 ## The app layer
 
@@ -74,6 +78,19 @@ All of it lives in `~/Library/Application Support/Sticky Things/`:
 | `OnboardingModel` / `OnboardingView` | First run: pick a corner, free it from macOS Hot Corners (live status), then try it once. |
 | `SelfTest`, `LayoutAudit`, `Snapshot` | `--selftest` drives the real UI and checks the grid; `--layout` walks the real panel through every state, captures it and checks `LayoutRules`; `--snapshot` renders every screen to PNGs. |
 
+### iOS
+
+| Piece | Job |
+|---|---|
+| `Library` | Wraps the shared `ItemStore` and `CaptureService`, owns search/filter state, and forwards store changes to SwiftUI. |
+| `RootView`, `ItemRow`, `ItemDetailView` | Native list, context menus, swipe actions, search, item detail, system share sheet and Quick Look. |
+| `QuickCaptureView` | The composer opened by the Action Button, Control Center, Home Screen quick action or the app's + button. Uses the system Paste button, Photos picker and Files importer. |
+| `StickyThingsShare` extension | Receives text, URLs, images and files from other apps. `ItemProviderCapture` normalizes providers into a `CapturedClip`; the extension saves it into the shared App Group library. |
+| `StickyThingsWidgets` | A `ControlWidget` for Control Center, the Lock Screen and the Action Button. It runs `OpenStickyThingIntent`, an `OpenIntent` shared with the app, so the system launches Sticky Things without a URL confirmation. |
+| `QuickCaptureFlag` | The small App Group flag the control writes and the app consumes when it becomes active. |
+| `StickyIntents` | App Shortcuts and Siri actions: New Sticky Thing and Save to Sticky Things. |
+| `SpotlightIndexer` | Indexes item titles, captions and text in the private on-device Spotlight index; concealed items are never indexed. |
+
 ### Decisions worth knowing
 
 * **The panel's hit area is solid.** The window ignores no mouse events, and its background is real system glass. Transparent pixels let clicks and hovers fall through to the window behind, which is what broke hover in v1.
@@ -84,9 +101,13 @@ All of it lives in `~/Library/Application Support/Sticky Things/`:
 * **A click does one thing, and you choose it.** `PanelModel.click` edits a note in place (the default) or copies it (`Settings.clickAction`); anything that can't be edited in place, or is a hidden password copy, is copied. VoiceOver's default action on a card is the same `click`. Starting an edit you're already in keeps it (no rebuild), so a double-click is harmless.
 * **The corner has two drop speeds.** A quick drop on it saves without opening anything. Holding the drag there for the configured delay (with a short shake and a configurable catch area) opens the panel so the thing can be dropped into the stack, with its caption editor and the rest of the panel one step away. Opening this way does not activate the app or take the keyboard away from the drag's source.
 * **Captions are not capture content.** `Item.caption` is stored next to the lossless snapshot, not in it, so adding words to an image or PDF never changes what that item gives back when copied. Captions are searchable and editable on the card with the same inline editor as notes.
+* **iOS is designed for iOS, not shrunk from the Mac.** The Mac's floating panel, hot corner and pointer grid have no place on a phone. The iOS app uses a native list, search, sheets, context menus, swipe actions, the system share sheet, Quick Look, Paste, Photos and Files pickers, and the system entry points people already know.
+* **One library, several processes.** The iOS app, Share extension and Control widget are separate sandboxes. App Group storage plus `ItemProviderCapture` keep them on one library and one lossless item format. The control uses an `OpenIntent` with a shared App Group flag, not a custom URL, so the system launches the app directly instead of asking "Open in Sticky Things?".
+* **Spotlight is private and selective.** iOS indexes item titles, captions and text in the on-device Spotlight index. Concealed password-manager copies are never indexed. The index is not synced anywhere.
+* **No background pasteboard reads on either platform.** macOS goes through Edit ▸ Paste, and iOS uses the system `PasteButton`, which grants paste access only in response to the person tapping it.
 * **Nothing is hover-only.** A clicked card is selected (or being edited), and a selected card keeps its buttons. Every action is also in the right-click menu, a keyboard shortcut and a VoiceOver action.
 * **⌘V goes through the main menu's Edit ▸ Paste.** That is how macOS tells a user paste apart from a background read (pasteboard privacy, macOS 15.4+). The app never reads the clipboard on its own.
 * **Focus is deterministic.** When a window becomes key, AppKit focuses the first text field, which would be search. The controller explicitly focuses the composer, and the self-test checks it.
 * **Files are handed out as clones.** Finder's ⌥⌘V *moves* a pasted file, so we never put our stored copy on the clipboard.
 
-See [PLATFORM.md](PLATFORM.md) for the macOS behavior behind these decisions, [DESIGN.md](DESIGN.md) for the design system, and [TESTING.md](TESTING.md) for how each layer is tested.
+See [PLATFORM.md](PLATFORM.md) for the macOS and iOS behavior behind these decisions, [DESIGN.md](DESIGN.md) for the design system, and [TESTING.md](TESTING.md) for how each layer is tested.

@@ -1,4 +1,4 @@
-.PHONY: app run install test selftest layout snapshots icon clean
+.PHONY: app run install test selftest layout snapshots icon ios-project ios-build ios-open clean
 
 app:            ## Build build/Sticky Things.app
 	@scripts/build-app.sh
@@ -24,7 +24,18 @@ snapshots:      ## Render every screen to build/snapshots
 	@swift build && .build/debug/StickyThings --snapshot build/snapshots
 
 icon:           ## Redraw the app icon
-	@swift scripts/make-icon.swift Resources/AppIcon.icns
+	@swift scripts/make-icon.swift apps/macos/Resources/AppIcon.icns
+
+ios-project:    ## Regenerate the iOS Xcode project (needs xcodegen)
+	@cd apps/ios && xcodegen generate
+
+ios-build: ios-project ## Build the iOS app for the simulator
+	@xcodebuild -project apps/ios/StickyThings.xcodeproj -scheme StickyThings \
+		-sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+		-derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO build
+
+ios-open:       ## Open the iOS project in Xcode
+	@open apps/ios/StickyThings.xcodeproj
 
 clean:
 	@rm -rf .build build

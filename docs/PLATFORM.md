@@ -1,6 +1,6 @@
-# How macOS handles clipboards, drags and files (and what we do about it)
+# How macOS and iOS handle clipboards, drags, files and extensions (and what we do about it)
 
-These are research notes, checked against macOS 26.1 where marked, behind the decisions in this codebase. Each section ends with what Sticky Things does about it.
+These are research notes, checked against macOS 26.1 and iOS 26 where marked, behind the decisions in this codebase. Each section ends with what Sticky Things does about it.
 
 ## The pasteboard is a list of items, each with many types
 
@@ -98,6 +98,19 @@ These are research notes, checked against macOS 26.1 where marked, behind the de
 * **Window shape.** `NSGlassEffectView` as a borderless window's content draws its shadow into the window's square corners. macOS then sees a rectangular window and outlines it. The panel's content view clips to the rounded shape (`cornerRadius` + `masksToBounds`, continuous curve), so the corners stay fully transparent and the system shadow follows the curve.
 * **Capturing our own windows.** An app may capture its *own* windows without Screen Recording permission (`CGWindowListCreateImage` with the window's number, looked up at runtime because the SDK marks it unavailable). The self-test uses this to check the panel's corners.
 * **Quick Look.** `QLPreviewPanel` only takes the keyboard when the app is active, so we activate for previews. It raises itself above our panel automatically.
+
+## iOS: paste, extensions and system entry points
+
+* **Paste privacy.** `UIPasteboard.general` reads outside a user action can trigger the system paste banner or prompt. The iOS composer uses SwiftUI's `PasteButton` with the content types it accepts, so paste access is granted by the explicit system control. The app never reads the pasteboard in the background.
+* **Share extensions are separate processes.** A Share extension cannot see the app's sandbox. Both targets declare the App Group `group.app.stickythings`, and `StickyAppGroup.paths` gives them the same SQLite, blob and file directories. The extension normalizes `NSItemProvider`s into the same `CapturedClip` the Mac pasteboard produces, then saves through the shared `CaptureService`.
+* **Files from other apps.** Share and drop providers usually hand over a temporary file or a security-scoped URL. The extension copies or scopes the file while it is valid, and `FileLibrary` keeps the library's own copy.
+* **Action Button, Control Center and Lock Screen.** iOS 18 controls are WidgetKit extensions. The control uses an `OpenIntent` that must be a member of both the app and the widget extension. It writes a small App Group flag and the system opens the app directly, which avoids the custom URL scheme's "Open in Sticky Things?" confirmation.
+* **Locked capture.** The app does not expose a locked camera capture extension. A control that opens the composer requires the device to unlock, which is the right privacy boundary for a personal library.
+* **Siri, Shortcuts and Spotlight.** App Intents and App Shortcuts expose New Sticky Thing and Save to Sticky Things. `CSSearchableIndex` keeps a private on-device index of item titles, captions and text. Spotlight results carry the item id and open the detail screen. Concealed items are excluded.
+* **System pickers.** `PhotosPicker` and `.fileImporter` run out of process, so the app does not ask for photo library or file access just to receive what someone picked.
+* **Quick Look and sharing.** Files are previewed with Quick Look and handed to the system share sheet. Images and PDFs that exist only as blobs are written to a temporary preview file with the right extension.
+* **iPad.** Drag and drop is a first-class input: text, URLs and files can be dropped into the list, and rows provide an `NSItemProvider` for dragging out. Pointer and hardware keyboard support come from the native SwiftUI controls.
+* **Simulator limits.** The simulator builds the control and extensions but cannot assign the Action Button or exercise the Control Center picker. Those need a signed device build. The share sheet can be exercised in the simulator after installing the extension.
 
 ## Hot Corners
 
