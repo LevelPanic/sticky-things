@@ -1,4 +1,4 @@
-.PHONY: app run install test selftest layout snapshots icon ios-project ios-build ios-open clean
+.PHONY: app run install test test-core test-design test-app test-macos test-filter selftest layout snapshots icon ios-project ios-build ios-open clean
 
 app:            ## Build build/Sticky Things.app
 	@scripts/build-app.sh
@@ -11,8 +11,24 @@ run: app        ## Build and launch from ./build
 install:        ## Build, copy to /Applications and launch
 	@scripts/build-app.sh --install
 
-test:           ## Unit tests: core, design system (contrast + lint), app logic
+test:           ## All unit tests: core, design system, macOS app logic
 	@swift test
+
+test-core:      ## Shared capture and storage tests only
+	@swift test --filter StickyCoreTests
+
+test-design:    ## macOS design system, contrast and lint tests only
+	@swift test --filter StickyDesignTests
+
+test-app:       ## macOS app logic tests only (PanelModel, corners, settings)
+	@swift test --filter StickyThingsTests
+
+test-macos:     ## All macOS-specific tests: design system + app logic
+	@swift test --filter 'StickyDesignTests|StickyThingsTests'
+
+test-filter:    ## Run matching tests: make test-filter FILTER=PanelModel
+	@test -n "$(FILTER)" || (echo "Usage: make test-filter FILTER=PanelModel" && exit 1)
+	@swift test --filter "$(FILTER)"
 
 selftest:       ## Drive the real panel through accessibility (throwaway library)
 	@swift build && .build/debug/StickyThings --selftest

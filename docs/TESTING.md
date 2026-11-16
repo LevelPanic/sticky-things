@@ -3,11 +3,16 @@
 Seven layers, from fastest to most realistic. The Mac layers use throwaway libraries and private pasteboards; the iOS layer builds the app and its extensions. The Mac self-test and layout audit open real windows: run them on an unlocked Mac and don't type or click while they run.
 
 ```bash
-make test        # 1–3: 46 unit tests (core, design, app logic)
+make test        # 1–3: all 46 unit tests (core, design, app logic)
+make test-core   # just the shared capture and storage tests
+make test-design # just the macOS design system tests
+make test-app    # just the macOS app logic tests
+make test-macos  # all macOS-specific tests (design + app logic)
+make test-filter FILTER=PanelModel
 make selftest    # 4: drives the real Mac panel window (57 checks, behavior + the grid)
 make layout      # 5: every Mac panel state, light and dark, checked against the grid, with captures
 make snapshots   # 6: renders every Mac screen to build/snapshots
-make ios-build   # 7: builds the iOS app, Share extension and Control widget
+make ios-build   # 7: builds the iOS app, Share extension, Home Screen widget and Control widget
 ```
 
 ## 1. Core (`packages/StickyCore/Tests/StickyCoreTests`)

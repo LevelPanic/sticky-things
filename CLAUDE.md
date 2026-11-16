@@ -17,7 +17,12 @@ Keep this file current. After any change that moves the status, the known gaps o
 ## Commands
 
 ```bash
-make test        # 46 unit tests: StickyCore, StickyDesign (contrast + design lint), PanelModel
+make test        # all 46 unit tests: StickyCore, StickyDesign, PanelModel
+make test-core   # shared capture and storage tests only
+make test-design # macOS design system, contrast and lint tests only
+make test-app    # macOS app logic tests only (PanelModel, corners, settings)
+make test-macos  # all macOS-specific tests (design system + app logic)
+make test-filter FILTER=PanelModel
 make selftest    # drives the real panel through in-process accessibility (57 checks incl. the grid, captions and drag-open, throwaway library)
 make layout      # every panel state and Settings pane, light and dark: rules + captures and frames in build/layout
 make snapshots   # renders every screen to build/snapshots (offscreen, flat surface instead of glass)
@@ -29,7 +34,7 @@ make ios-build   # build the iOS app, Share extension, Home Screen widget and Co
 make ios-open    # open the iOS project in Xcode
 ```
 
-Before calling Mac work done: `make test`, `make selftest` and (for any visual change) `make layout` all green, look at the captures in `build/layout`, then `make install` so the user is running the latest build. Before calling iOS work done: `make ios-build` succeeds, then run the simulator smoke path in docs/TESTING.md. The Action Button and Control Center need a signed device.
+Before calling Mac work done: `make test`, `make selftest` and (for any visual change) `make layout` all green, look at the captures in `build/layout`, then `make install` so the user is running the latest build. During iteration use `make test-core`, `make test-design`, `make test-app` or `make test-filter FILTER=…` instead of the full suite. Before calling iOS work done: `make ios-build` succeeds, then run the simulator smoke path in docs/TESTING.md. The Action Button and Control Center need a signed device.
 
 ## Layout
 

@@ -127,7 +127,12 @@ The shared core means a caption, a file copy or a tag has the same meaning on bo
 ### Development commands
 
 ```bash
-make test        # 46 Mac unit tests: core, design system, app logic
+make test        # all 46 unit tests
+make test-core   # shared capture and storage tests only
+make test-design # macOS design system, contrast and lint tests only
+make test-app    # macOS app logic tests only (PanelModel, corners, settings)
+make test-macos  # all macOS-specific tests (design system + app logic)
+make test-filter FILTER=PanelModel
 make selftest    # drives the real Mac panel through accessibility (57 checks)
 make layout      # checks every Mac panel state against the design grid
 make snapshots   # renders every Mac screen to build/snapshots
