@@ -15,11 +15,14 @@ let package = Package(
         .executable(name: "StickyThings", targets: ["StickyThings"]),
         .library(name: "StickyCore", targets: ["StickyCore"]),
         .library(name: "StickyDesign", targets: ["StickyDesign"]),
+        .library(name: "StickyIOSDesign", targets: ["StickyIOSDesign"]),
     ],
     targets: [
         .target(name: "StickyCore", path: "packages/StickyCore/Sources/StickyCore", swiftSettings: swift5,
                 linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "StickyDesign", path: "packages/StickyDesign/Sources/StickyDesign", swiftSettings: swift5),
+        .target(name: "StickyIOSDesign", dependencies: ["StickyCore"],
+                path: "packages/StickyIOSDesign/Sources/StickyIOSDesign", swiftSettings: swift5),
         .executableTarget(name: "StickyThings", dependencies: ["StickyCore", "StickyDesign"],
                           path: "apps/macos/Sources/StickyThings", swiftSettings: swift5),
 

@@ -1,5 +1,6 @@
 import QuickLook
 import StickyCore
+import StickyIOSDesign
 import SwiftUI
 import UIKit
 
@@ -21,27 +22,27 @@ struct ItemDetailView: View {
         NavigationStack {
             GeometryReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: StickySpace.l) {
                         header
                         content
                         if let caption = current.caption, !caption.isEmpty {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Caption").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                                Text(caption).font(.body).fixedSize(horizontal: false, vertical: true)
+                            VStack(alignment: .leading, spacing: StickySpace.xs) {
+                                Text("Caption").font(StickyType.section).foregroundStyle(StickyPalette.textSecondary)
+                                Text(caption).font(StickyType.body).fixedSize(horizontal: false, vertical: true)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(14)
-                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(IOSTheme.card))
+                            .padding(StickySpace.l)
+                            .stickyCard()
                         }
                         details
                         actions
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
+                    .padding(StickyMetrics.contentInset)
                     .frame(width: proxy.size.width)
                 }
             }
-            .background(IOSTheme.page)
+            .background(StickyPalette.page)
             .navigationTitle(current.kind.label)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -78,19 +79,19 @@ struct ItemDetailView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: current.kind.iosSymbol)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(current.kind.label).font(.headline)
-                Text(current.source?.name.map { "\($0) · \(IOSDate.short(current.createdAt))" } ?? IOSDate.short(current.createdAt))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: StickySpace.m) {
+            Image(systemName: StickyKind.symbol(for: current.kind))
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(StickyPalette.textSecondary)
+            VStack(alignment: .leading, spacing: StickySpace.xxs) {
+                Text(current.kind.label).font(StickyType.cardTitle)
+                Text(current.source?.name.map { "\($0) · \(StickyRelativeTime.short(current.createdAt))" } ?? StickyRelativeTime.short(current.createdAt))
+                    .font(StickyType.meta)
+                    .foregroundStyle(StickyPalette.textSecondary)
             }
             Spacer()
             if current.pinned {
-                Image(systemName: "pin.fill").foregroundStyle(.orange)
+                Image(systemName: "pin.fill").foregroundStyle(StickyPalette.warning)
             }
         }
     }
@@ -99,52 +100,50 @@ struct ItemDetailView: View {
         switch current.kind {
         case .text, .richText:
             Text(current.text)
-                .font(.body)
-                .lineSpacing(3)
+                .font(StickyType.body)
+                .lineSpacing(StickyMetrics.bodyLineSpacing)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(current.tint.iosPaper))
-                .foregroundStyle(current.tint.iosInk)
+                .padding(StickySpace.l)
+                .background(RoundedRectangle(cornerRadius: StickyRadius.l, style: .continuous)
+                    .fill(StickyTintPalette.paper(current.tint)))
+                .foregroundStyle(StickyTintPalette.ink(current.tint))
         case .image, .pdf:
             ItemThumbnailView(item: current, library: library)
-                .containerRelativeFrame(.horizontal) { length, _ in max(0, length - 32) }
-                .frame(height: 280)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .containerRelativeFrame(.horizontal) { length, _ in max(0, length - StickyMetrics.contentInset * 2) }
+                .frame(height: StickyMetrics.detailThumbnail)
+                .clipShape(RoundedRectangle(cornerRadius: StickyRadius.l, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: StickyRadius.l, style: .continuous))
                 .onTapGesture { previewURL = library.previewURL(for: current) }
         case .link:
             if let url = current.link.flatMap({ URL(string: $0.url) }) {
                 Link(destination: url) {
                     Label(current.link?.title ?? url.host() ?? "Open Link", systemImage: "arrow.up.right")
+                        .font(StickyType.body)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
+                        .padding(StickySpace.l)
                 }
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(IOSTheme.card))
+                .stickyCard()
             }
         default:
-            HStack(spacing: 14) {
-                Image(systemName: current.kind.iosSymbol)
-                    .font(.system(size: 26, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 46, height: 46)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(IOSTheme.field))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(current.headline).font(.body.weight(.semibold)).lineLimit(2)
+            HStack(spacing: StickySpace.l) {
+                StickyKindTile(kind: current.kind, size: StickyMetrics.detailIcon)
+                VStack(alignment: .leading, spacing: StickySpace.xs) {
+                    Text(current.headline).font(StickyType.cardTitle).lineLimit(2)
                     Text(current.files.map(\.name).joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(StickyType.meta)
+                        .foregroundStyle(StickyPalette.textSecondary)
                         .lineLimit(2)
                 }
                 Spacer()
             }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(IOSTheme.card))
+            .padding(StickySpace.l)
+            .stickyCard()
         }
     }
 
     private var details: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: StickySpace.s) {
             if let size = current.pixelSize {
                 detail("Size", "\(size.width) × \(size.height)")
             }
@@ -162,23 +161,23 @@ struct ItemDetailView: View {
 
     private func detail(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).foregroundStyle(.secondary)
+            Text(label).foregroundStyle(StickyPalette.textSecondary)
             Spacer()
             Text(value).monospacedDigit()
         }
-        .font(.subheadline)
+        .font(StickyType.body)
     }
 
     private var actions: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                action("Copy", symbol: "doc.on.doc") { library.copy(current) }
-                action("Share", symbol: "square.and.arrow.up") { showingShare = true }
+        VStack(spacing: StickySpace.s) {
+            HStack(spacing: StickySpace.s) {
+                StickyActionButton("Copy", symbol: "doc.on.doc") { library.copy(current) }
+                StickyActionButton("Share", symbol: "square.and.arrow.up") { showingShare = true }
                 if current.supportsCaption {
-                    action(current.caption == nil ? "Caption" : "Edit", symbol: "text.bubble") { showingCaption = true }
+                    StickyActionButton(current.caption == nil ? "Caption" : "Edit", symbol: "text.bubble") { showingCaption = true }
                 }
                 if current.kind.isTextual || current.kind == .link {
-                    action("Edit", symbol: "pencil") { showingEdit = true }
+                    StickyActionButton("Edit", symbol: "pencil") { showingEdit = true }
                 }
             }
             if current.kind == .image || current.kind == .pdf || !current.files.isEmpty {
@@ -196,17 +195,5 @@ struct ItemDetailView: View {
             }
             .buttonStyle(.bordered)
         }
-    }
-
-    private func action(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 5) {
-                Image(systemName: symbol).font(.system(size: 18, weight: .medium))
-                Text(title).font(.caption.weight(.medium))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-        }
-        .buttonStyle(.bordered)
     }
 }

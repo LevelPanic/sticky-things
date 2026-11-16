@@ -1,4 +1,5 @@
 import StickyCore
+import StickyIOSDesign
 import SwiftUI
 
 struct EditNoteView: View {
@@ -19,13 +20,12 @@ struct EditNoteView: View {
         NavigationStack {
             TextEditor(text: $text)
                 .focused($focused)
-                .font(.body)
+                .font(StickyType.body)
                 .scrollContentBackground(.hidden)
-                .padding(8)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(IOSTheme.field))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.quaternary))
-                .padding(16)
-                .background(IOSTheme.page)
+                .padding(StickySpace.s)
+                .stickyField(radius: StickyRadius.action, fill: StickyPalette.surfaceSunken)
+                .padding(StickyMetrics.contentInset)
+                .background(StickyPalette.page)
                 .navigationTitle("Edit Note")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

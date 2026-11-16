@@ -1,5 +1,6 @@
 import ImageIO
 import StickyCore
+import StickyIOSDesign
 import SwiftUI
 import UIKit
 import WidgetKit
@@ -71,7 +72,7 @@ enum WidgetLibrary {
         let visible = store.items.filter { !$0.concealed }
         let pinned = visible.filter(\.pinned)
         let rest = visible.filter { !$0.pinned }
-        let shown = (pinned + rest).prefix(6).map { widgetItem($0, store: store) }
+        let shown = (pinned + rest).prefix(StickyMetrics.widgetItemLimit).map { widgetItem($0, store: store) }
         return StickyWidgetEntry(date: Date(), items: shown, pinnedCount: pinned.count, totalCount: visible.count)
     }
 
@@ -194,33 +195,33 @@ struct StickyWidgetView: View {
         case .accessoryRectangular, .accessoryInline, .accessoryCircular:
             AccessoryWidgetBackground()
         default:
-            WidgetTheme.paper
+            StickyPalette.paper
         }
     }
 
     // MARK: Home Screen
 
     private var small: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: StickySpace.s) {
             header
             if let item = entry.items.first {
                 itemBlock(item, showsImage: true)
                 Spacer(minLength: 0)
                 Text(entry.totalCount == 1 ? "1 item" : "\(entry.totalCount) items")
-                    .font(.caption2)
-                    .foregroundStyle(WidgetTheme.secondaryInk)
+                    .font(StickyType.widgetMeta)
+                    .foregroundStyle(StickyPalette.paperInkSecondary)
             } else {
                 Spacer()
-                Text("Nothing saved yet").font(.caption).foregroundStyle(WidgetTheme.secondaryInk)
+                Text("Nothing saved yet").font(StickyType.widgetMeta).foregroundStyle(StickyPalette.paperInkSecondary)
                 Spacer()
             }
         }
-        .padding(14)
+        .padding(StickySpace.l)
         .widgetURL(itemURL(entry.items.first?.id) ?? URL(string: "stickythings://open")!)
     }
 
     private var medium: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: StickySpace.s) {
             header
             ForEach(entry.items.prefix(3)) { item in
                 Link(destination: itemURL(item.id)!) {
@@ -230,11 +231,11 @@ struct StickyWidgetView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(StickySpace.l)
     }
 
     private var large: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: StickySpace.s) {
             header
             ForEach(entry.items) { item in
                 Link(destination: itemURL(item.id)!) {
@@ -243,32 +244,32 @@ struct StickyWidgetView: View {
                 .buttonStyle(.plain)
             }
             Spacer(minLength: 0)
-            Divider().overlay(WidgetTheme.secondaryInk.opacity(0.18))
+            Divider().overlay(StickyPalette.paperInkSecondary.opacity(0.18))
             Button(intent: OpenStickyThingIntent()) {
                 Label("New Sticky Thing", systemImage: "plus")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(WidgetTheme.ink)
+                    .font(StickyType.widgetHeader)
+                    .foregroundStyle(StickyPalette.paperInk)
             }
             .buttonStyle(.plain)
         }
-        .padding(14)
+        .padding(StickySpace.l)
     }
 
     // MARK: Lock Screen
 
     private var accessoryRectangular: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: StickySpace.xxs) {
             Label("Sticky Things", systemImage: "note.text")
-                .font(.caption2.weight(.semibold))
+                .font(StickyType.widgetHeader)
                 .widgetAccentable()
             if let item = entry.items.first {
                 Text(item.title)
-                    .font(.headline)
+                    .font(StickyType.widgetRow)
                     .lineLimit(2)
                 Text(entry.totalCount == 1 ? "1 item" : "\(entry.totalCount) items")
-                    .font(.caption2)
+                    .font(StickyType.widgetMeta)
             } else {
-                Text("Nothing saved yet").font(.caption)
+                Text("Nothing saved yet").font(StickyType.widgetMeta)
             }
         }
         .widgetURL(itemURL(entry.items.first?.id) ?? URL(string: "stickythings://open")!)
@@ -280,14 +281,14 @@ struct StickyWidgetView: View {
     }
 
     private var accessoryCircular: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: StickySpace.xxs) {
             Image(systemName: "note.text")
-                .font(.caption2)
+                .font(StickyType.widgetMeta)
                 .widgetAccentable()
             Text("\(entry.totalCount)")
                 .font(.title3.weight(.semibold))
             Text("items")
-                .font(.system(size: 9))
+                .font(StickyType.widgetMeta)
         }
         .widgetURL(URL(string: "stickythings://open")!)
     }
@@ -295,132 +296,60 @@ struct StickyWidgetView: View {
     // MARK: Pieces
 
     private var header: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: StickySpace.xs) {
             Image(systemName: "note.text")
-                .font(.caption2.weight(.semibold))
+                .font(StickyType.widgetHeader)
                 .widgetAccentable()
             Text("Sticky Things")
-                .font(.caption2.weight(.semibold))
-            Spacer(minLength: 4)
+                .font(StickyType.widgetHeader)
+            Spacer(minLength: StickySpace.xs)
             if entry.pinnedCount > 0 {
                 Image(systemName: "pin.fill")
-                    .font(.caption2)
+                    .font(StickyType.widgetMeta)
             }
         }
-        .foregroundStyle(WidgetTheme.secondaryInk)
+        .foregroundStyle(StickyPalette.paperInkSecondary)
     }
 
     private func itemBlock(_ item: StickyWidgetItem, showsImage: Bool) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: StickySpace.s) {
             if showsImage, let image = item.image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 42, height: 42)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .frame(width: StickyMetrics.widgetImage, height: StickyMetrics.widgetImage)
+                    .clipShape(RoundedRectangle(cornerRadius: StickyRadius.s, style: .continuous))
             } else {
                 itemIcon(item)
             }
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: StickySpace.xxs) {
                 Text(item.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(WidgetTheme.ink)
+                    .font(StickyType.widgetRow)
+                    .foregroundStyle(StickyPalette.paperInk)
                     .lineLimit(showsImage ? 2 : 1)
                 if let detail = item.detail {
                     Text(detail)
-                        .font(.caption2)
-                        .foregroundStyle(WidgetTheme.secondaryInk)
+                        .font(StickyType.widgetMeta)
+                        .foregroundStyle(StickyPalette.paperInkSecondary)
                         .lineLimit(1)
                 }
             }
-            Spacer(minLength: 4)
-            Text(relativeText(item.createdAt))
-                .font(.caption2)
-                .foregroundStyle(WidgetTheme.secondaryInk)
+            Spacer(minLength: StickySpace.xs)
+            Text(StickyRelativeTime.compact(item.createdAt))
+                .font(StickyType.widgetMeta)
+                .foregroundStyle(StickyPalette.paperInkSecondary)
                 .lineLimit(1)
         }
     }
 
-    private func relativeText(_ date: Date) -> String {
-        let seconds = max(0, Date().timeIntervalSince(date))
-        if seconds < 60 { return "now" }
-        if seconds < 3600 { return "\(Int(seconds / 60))m" }
-        if seconds < 86_400 { return "\(Int(seconds / 3600))h" }
-        return "\(Int(seconds / 86_400))d"
-    }
-
     private func itemIcon(_ item: StickyWidgetItem) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(item.tint == .none ? WidgetTheme.row : item.tint.widgetPaper)
-            Image(systemName: item.kind.widgetSymbol)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(item.tint == .none ? WidgetTheme.secondaryInk : WidgetTheme.ink)
-        }
-        .frame(width: 28, height: 28)
+        StickyKindTile(kind: item.kind, tint: item.tint,
+                       fill: item.tint == .none ? StickyPalette.subduedFill : nil,
+                       size: StickyMetrics.widgetIcon)
     }
 
     private func itemURL(_ id: UUID?) -> URL? {
         guard let id else { return nil }
         return URL(string: "stickythings://item/\(id.uuidString)")
-    }
-}
-
-// MARK: - Theme
-
-enum WidgetTheme {
-    static let paper = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.23, green: 0.20, blue: 0.12, alpha: 1)
-            : UIColor(red: 1.0, green: 0.91, blue: 0.55, alpha: 1)
-    })
-
-    static let ink = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.96, green: 0.92, blue: 0.82, alpha: 1)
-            : UIColor(red: 0.28, green: 0.19, blue: 0.05, alpha: 1)
-    })
-
-    static let secondaryInk = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.76, green: 0.70, blue: 0.56, alpha: 1)
-            : UIColor(red: 0.42, green: 0.32, blue: 0.14, alpha: 1)
-    })
-
-    static let row = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor.white.withAlphaComponent(0.10)
-            : UIColor.black.withAlphaComponent(0.06)
-    })
-}
-
-extension Tint {
-    var widgetPaper: Color {
-        switch self {
-        case .none: return WidgetTheme.row
-        case .yellow: return Color(red: 1.0, green: 0.91, blue: 0.55)
-        case .orange: return Color(red: 1.0, green: 0.87, blue: 0.76)
-        case .pink: return Color(red: 1.0, green: 0.85, blue: 0.90)
-        case .purple: return Color(red: 0.91, green: 0.87, blue: 1.0)
-        case .blue: return Color(red: 0.80, green: 0.91, blue: 1.0)
-        case .green: return Color(red: 0.78, green: 0.95, blue: 0.78)
-        }
-    }
-}
-
-extension ItemKind {
-    var widgetSymbol: String {
-        switch self {
-        case .text: return "text.alignleft"
-        case .richText: return "textformat"
-        case .link: return "link"
-        case .image: return "photo"
-        case .pdf: return "doc.richtext"
-        case .file: return "doc"
-        case .folder: return "folder"
-        case .files: return "doc.on.doc"
-        case .color: return "paintpalette"
-        case .other: return "shippingbox"
-        }
     }
 }

@@ -116,21 +116,22 @@ This is a monorepo. The Apple apps share a core, while each app uses the native 
 ```text
 apps/
   macos/       the Mac app: corner windows, panel, onboarding, Settings
-  ios/         the iPhone app, Share extension and Control widget
+  ios/         the iPhone app, Share extension, Home Screen and Control widgets
 packages/
-  StickyCore/  cross-platform item model, SQLite, blob store, capture and file library
-  StickyDesign/ macOS design tokens and components
+  StickyCore/      cross-platform item model, SQLite, blob store, capture and file library
+  StickyDesign/    macOS design tokens and components
+  StickyIOSDesign/ iOS design tokens and components shared by every iOS target
 docs/          architecture, design, platform and testing notes
 ```
 
-The shared core means a caption, a file copy or a tag has the same meaning on both platforms. The apps deliberately do not share a UI: the Mac uses a floating glass panel and hot corners, while iOS uses the Action Button, share sheet, sheets and system controls.
+The shared core means a caption, a file copy or a tag has the same meaning on both platforms. The apps deliberately do not share a UI: the Mac uses a floating glass panel and hot corners, while iOS uses the Action Button, share sheet, sheets and system controls. The iOS app, Share extension and Home Screen widget share `StickyIOSDesign`, so their color, type, spacing, radii, motion, item symbols and small components stay consistent.
 
 ### Development commands
 
 ```bash
-make test        # all 46 unit tests
+make test        # all 47 unit tests
 make test-core   # shared capture and storage tests only
-make test-design # macOS design system, contrast and lint tests only
+make test-design # design system, contrast and lint tests (Mac and iOS source)
 make test-app    # macOS app logic tests only (PanelModel, corners, settings)
 make test-macos  # all macOS-specific tests (design system + app logic)
 make test-filter FILTER=PanelModel
@@ -147,7 +148,7 @@ make install     # release build the Mac app, copy to /Applications and launch
 | Doc | What is in it |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Shared data flow, storage layout, and platform layers |
-| [docs/DESIGN.md](docs/DESIGN.md) | Mac design tokens, components, writing rules, and what the tests enforce |
+| [docs/DESIGN.md](docs/DESIGN.md) | Mac and iOS design tokens, components, writing rules, and what the tests enforce |
 | [docs/PLATFORM.md](docs/PLATFORM.md) | How macOS and iOS handle pasteboards, drags, focus, privacy and extensions |
 | [docs/TESTING.md](docs/TESTING.md) | Unit tests, design lint, the Mac self-test, snapshots, and the manual pass |
 | [apps/ios/README.md](apps/ios/README.md) | iOS build, Action Button, Share extension, Spotlight, and system integrations |

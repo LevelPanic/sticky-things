@@ -7,31 +7,36 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1462E00AF75D96D6FE80E7FB /* EditNoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6DA88476869336BDD1C34B6 /* EditNoteView.swift */; };
+		069A14E33CBDDB33BB6DA45E /* EditNoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C18F839F46C8B327C200741F /* EditNoteView.swift */; };
+		2ECD223F6BBD719B5AFD1A9D /* ItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F539DE93168D527301190054 /* ItemRow.swift */; };
+		305728DDEA8979A8D823B673 /* StickyIOSDesign in Frameworks */ = {isa = PBXBuildFile; productRef = F529396835E4B6074EE387EC /* StickyIOSDesign */; };
 		335384336701B65ACC4E5EAA /* StickyCore in Frameworks */ = {isa = PBXBuildFile; productRef = C7151D444C3396BA59F85891 /* StickyCore */; };
-		46906D5253671C5F48F63C5F /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A02E5E5D211334B5E1A919 /* ActivityView.swift */; };
+		3357F0983459D303CDB09413 /* StickyIOSDesign in Frameworks */ = {isa = PBXBuildFile; productRef = A4614377926B6ABA846F27F5 /* StickyIOSDesign */; };
 		478211BFABEB2CBD5DB0AD52 /* StickyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2438C7BC7CCAE248B1AC3875 /* StickyCore */; };
 		4849DBE607478086528467E6 /* StickyThingsShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7B35148F74604CE2ED6CB429 /* StickyThingsShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		5058ED35E4F2A131224F1502 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B817986D43904EDD1B78216E /* RootView.swift */; };
+		487EA1C8A227E3982DEA213B /* CaptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8680F39D9143D4C3EF05CD28 /* CaptionEditorView.swift */; };
 		5094AACAE1F3C21B1E37B1D4 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21D5B770550CCD2BD1DD72CE /* ShareViewController.swift */; };
 		5519C35A423250578D323542 /* StickyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0D9B9BEA499E94669E2B5C71 /* StickyCore */; };
 		6B913C43930CD2F04673F4B6 /* StickyThingsHomeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 37D3914B23FA5293EC3132BD /* StickyThingsHomeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		751987AB40DCA5506BA44E8A /* StickyThingsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B2D6171715C78D5368D66A /* StickyThingsWidget.swift */; };
-		8995C16594CA28B5BF942E73 /* ItemThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26107DBFCFD49DAF88FF33A4 /* ItemThumbnailView.swift */; };
-		9663857858230AD385E67F3C /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F670E34BFE4B4529D3B013 /* ItemDetailView.swift */; };
+		77746A4350DE03E8C8AA96F1 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972C67280FE543BBE441DDB1 /* ActivityView.swift */; };
+		8003468EF77432058F7090B5 /* DemoContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D2DBFA0FAC482BC6066213 /* DemoContent.swift */; };
+		82D6C07A927486BEA6E185A4 /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D8D5F96E36B2212C1C0335 /* ItemDetailView.swift */; };
+		84580DE58260B45E92E62A43 /* StickyThingsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6030188911BA5F75B42BB4A8 /* StickyThingsApp.swift */; };
+		8F2DCF573314180B3F883747 /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = E384EA94E41A770DA7C40808 /* Library.swift */; };
+		8F391CC9AB18E77D6500EAA8 /* ItemThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D62019CED5F046606D70E9B /* ItemThumbnailView.swift */; };
 		A059BC9DB1D493F0BAF39E8D /* QuickCaptureControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742D5165546180120A9F663D /* QuickCaptureControl.swift */; };
-		A0C43787961850971D92D9A0 /* StickyThingsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 548F52C6CAE6C72C0138ABFF /* StickyThingsApp.swift */; };
 		AB9CB9D79A41009DC9560340 /* QuickCaptureControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742D5165546180120A9F663D /* QuickCaptureControl.swift */; };
-		C0B38764A97FC80C366B1A02 /* SpotlightIndexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136A1C65FF14CE46C62AA316 /* SpotlightIndexer.swift */; };
-		CAE22FD227DBF94F52149847 /* IOSTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38BE2BE770E4EAD3F7AA0CF1 /* IOSTheme.swift */; };
-		DC606D132D0661D4AA290626 /* StickyIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C851AE2661F78E38BCEE9AF /* StickyIntents.swift */; };
+		AF3FC3643D713F9F59C320CF /* QuickCaptureRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B959879F74262CF529CDB0 /* QuickCaptureRouter.swift */; };
+		C85E5E0D115F8D2518BF8935 /* StickyIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF6801AC7B4DF8C57245820 /* StickyIntents.swift */; };
+		CEEB14086FE0E46CEBB38BA2 /* ComposerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E1E174625DD9A74842717E /* ComposerBar.swift */; };
+		D22162CC1C00267F1828846C /* StickyIOSDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 0CBC89A357DE8E57F1C96DA1 /* StickyIOSDesign */; };
+		D8A6203BA9FA1F8E7CFA0D3E /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D1C4C7833B5B54F789B42C8 /* LibraryView.swift */; };
 		E7178596A32BFDB7F5D3C436 /* StickyThingsWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1E3868782ED199ACB62E04BC /* StickyThingsWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E8F95A25DE12D219AF29AB80 /* SpotlightIndexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D22E5979E175B89C222732 /* SpotlightIndexer.swift */; };
+		E978D0D2CD8A64BB724C9CD8 /* EmptyLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5CD7656432B390D1A1A3EAA /* EmptyLibraryView.swift */; };
 		ED6ACF719C1C2AE01F114137 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 08B9AB7999C490C6415F85AC /* Assets.xcassets */; };
 		EDF8750DC0634A427A315118 /* NewStickyThingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 615354D0F5CEF805F94C8CAB /* NewStickyThingControl.swift */; };
-		EF743F50A7F905F7B28E426D /* ItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB4697C5ECF0CF111738192C /* ItemRow.swift */; };
-		F2AB0315D5AA775C550E9DF3 /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742B7FFFF3B205BD16630F01 /* Library.swift */; };
-		F6868D255B67FA6C2D0F7DA2 /* CaptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD80BE874E5D2DFAAAD33F5A /* CaptionEditorView.swift */; };
-		FADE78319F63B4D749819932 /* DemoContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEA182E636A7AFF7C50F97E3 /* DemoContent.swift */; };
 		FB76D8B62CCD549355AF6F11 /* QuickCaptureControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742D5165546180120A9F663D /* QuickCaptureControl.swift */; };
 /* End PBXBuildFile section */
 
@@ -77,28 +82,30 @@
 
 /* Begin PBXFileReference section */
 		08B9AB7999C490C6415F85AC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		136A1C65FF14CE46C62AA316 /* SpotlightIndexer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightIndexer.swift; sourceTree = "<group>"; };
+		0DF6801AC7B4DF8C57245820 /* StickyIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyIntents.swift; sourceTree = "<group>"; };
 		1E3868782ED199ACB62E04BC /* StickyThingsWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = StickyThingsWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		20B2D6171715C78D5368D66A /* StickyThingsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyThingsWidget.swift; sourceTree = "<group>"; };
 		21D5B770550CCD2BD1DD72CE /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
-		26107DBFCFD49DAF88FF33A4 /* ItemThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemThumbnailView.swift; sourceTree = "<group>"; };
+		2D1C4C7833B5B54F789B42C8 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		37D3914B23FA5293EC3132BD /* StickyThingsHomeWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = StickyThingsHomeWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		38BE2BE770E4EAD3F7AA0CF1 /* IOSTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSTheme.swift; sourceTree = "<group>"; };
-		548F52C6CAE6C72C0138ABFF /* StickyThingsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyThingsApp.swift; sourceTree = "<group>"; };
+		3D62019CED5F046606D70E9B /* ItemThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemThumbnailView.swift; sourceTree = "<group>"; };
+		45D8D5F96E36B2212C1C0335 /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
+		6030188911BA5F75B42BB4A8 /* StickyThingsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyThingsApp.swift; sourceTree = "<group>"; };
 		615354D0F5CEF805F94C8CAB /* NewStickyThingControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewStickyThingControl.swift; sourceTree = "<group>"; };
-		6C851AE2661F78E38BCEE9AF /* StickyIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyIntents.swift; sourceTree = "<group>"; };
 		72FC53FA9A7BDF4E11144233 /* sticky-things */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sticky-things"; path = ../..; sourceTree = SOURCE_ROOT; };
-		742B7FFFF3B205BD16630F01 /* Library.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library.swift; sourceTree = "<group>"; };
 		742D5165546180120A9F663D /* QuickCaptureControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureControl.swift; sourceTree = "<group>"; };
 		7B35148F74604CE2ED6CB429 /* StickyThingsShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = StickyThingsShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		88A02E5E5D211334B5E1A919 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
-		91F670E34BFE4B4529D3B013 /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
-		B817986D43904EDD1B78216E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		BEA182E636A7AFF7C50F97E3 /* DemoContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoContent.swift; sourceTree = "<group>"; };
-		C6DA88476869336BDD1C34B6 /* EditNoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditNoteView.swift; sourceTree = "<group>"; };
-		CB4697C5ECF0CF111738192C /* ItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemRow.swift; sourceTree = "<group>"; };
+		8680F39D9143D4C3EF05CD28 /* CaptionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionEditorView.swift; sourceTree = "<group>"; };
+		972C67280FE543BBE441DDB1 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
+		C18F839F46C8B327C200741F /* EditNoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditNoteView.swift; sourceTree = "<group>"; };
+		E2D2DBFA0FAC482BC6066213 /* DemoContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoContent.swift; sourceTree = "<group>"; };
+		E384EA94E41A770DA7C40808 /* Library.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library.swift; sourceTree = "<group>"; };
+		E4D22E5979E175B89C222732 /* SpotlightIndexer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightIndexer.swift; sourceTree = "<group>"; };
+		E5CD7656432B390D1A1A3EAA /* EmptyLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyLibraryView.swift; sourceTree = "<group>"; };
+		E8B959879F74262CF529CDB0 /* QuickCaptureRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureRouter.swift; sourceTree = "<group>"; };
+		F0E1E174625DD9A74842717E /* ComposerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerBar.swift; sourceTree = "<group>"; };
 		F106213A8D83846015BCB794 /* StickyThings.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StickyThings.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		FD80BE874E5D2DFAAAD33F5A /* CaptionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionEditorView.swift; sourceTree = "<group>"; };
+		F539DE93168D527301190054 /* ItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemRow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -107,6 +114,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				478211BFABEB2CBD5DB0AD52 /* StickyCore in Frameworks */,
+				305728DDEA8979A8D823B673 /* StickyIOSDesign in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -115,6 +123,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5519C35A423250578D323542 /* StickyCore in Frameworks */,
+				D22162CC1C00267F1828846C /* StickyIOSDesign in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -123,12 +132,23 @@
 			buildActionMask = 2147483647;
 			files = (
 				335384336701B65ACC4E5EAA /* StickyCore in Frameworks */,
+				3357F0983459D303CDB09413 /* StickyIOSDesign in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		10FDC90B164E7057754DE90C /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E2D2DBFA0FAC482BC6066213 /* DemoContent.swift */,
+				E8B959879F74262CF529CDB0 /* QuickCaptureRouter.swift */,
+				6030188911BA5F75B42BB4A8 /* StickyThingsApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
 		1FAD4C7312F935BB941E9F6C /* StickyThingsWidget */ = {
 			isa = PBXGroup;
 			children = (
@@ -153,12 +173,53 @@
 			path = StickyThingsShare;
 			sourceTree = "<group>";
 		};
+		5EEB7154D5046568B58DB216 /* Editing */ = {
+			isa = PBXGroup;
+			children = (
+				8680F39D9143D4C3EF05CD28 /* CaptionEditorView.swift */,
+				C18F839F46C8B327C200741F /* EditNoteView.swift */,
+			);
+			path = Editing;
+			sourceTree = "<group>";
+		};
+		663AB52A56FC933551BA2832 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				E384EA94E41A770DA7C40808 /* Library.swift */,
+				E4D22E5979E175B89C222732 /* SpotlightIndexer.swift */,
+				0DF6801AC7B4DF8C57245820 /* StickyIntents.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		7605F7A10591EED854212AC7 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
 				742D5165546180120A9F663D /* QuickCaptureControl.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		76D504FA50BE861B8D2C7806 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				E5CD7656432B390D1A1A3EAA /* EmptyLibraryView.swift */,
+				45D8D5F96E36B2212C1C0335 /* ItemDetailView.swift */,
+				F539DE93168D527301190054 /* ItemRow.swift */,
+				3D62019CED5F046606D70E9B /* ItemThumbnailView.swift */,
+				2D1C4C7833B5B54F789B42C8 /* LibraryView.swift */,
+			);
+			path = Library;
+			sourceTree = "<group>";
+		};
+		7DEEFB6B6414931B451DE1B1 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				E6B959B6B8EE67A8CC24EB68 /* Composer */,
+				5EEB7154D5046568B58DB216 /* Editing */,
+				76D504FA50BE861B8D2C7806 /* Library */,
+			);
+			path = Features;
 			sourceTree = "<group>";
 		};
 		8F70BBB3CED07D4C26F148BF /* Products */ = {
@@ -182,6 +243,14 @@
 			);
 			sourceTree = "<group>";
 		};
+		A59D08F75F91D3114EE7CF78 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				972C67280FE543BBE441DDB1 /* ActivityView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
 		B66DDBD6B30061E1AFE1C2F0 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -201,21 +270,20 @@
 		CC79EF086B8C08DDDD440FEF /* StickyThingsIOS */ = {
 			isa = PBXGroup;
 			children = (
-				88A02E5E5D211334B5E1A919 /* ActivityView.swift */,
-				FD80BE874E5D2DFAAAD33F5A /* CaptionEditorView.swift */,
-				BEA182E636A7AFF7C50F97E3 /* DemoContent.swift */,
-				C6DA88476869336BDD1C34B6 /* EditNoteView.swift */,
-				38BE2BE770E4EAD3F7AA0CF1 /* IOSTheme.swift */,
-				91F670E34BFE4B4529D3B013 /* ItemDetailView.swift */,
-				CB4697C5ECF0CF111738192C /* ItemRow.swift */,
-				26107DBFCFD49DAF88FF33A4 /* ItemThumbnailView.swift */,
-				742B7FFFF3B205BD16630F01 /* Library.swift */,
-				B817986D43904EDD1B78216E /* RootView.swift */,
-				136A1C65FF14CE46C62AA316 /* SpotlightIndexer.swift */,
-				6C851AE2661F78E38BCEE9AF /* StickyIntents.swift */,
-				548F52C6CAE6C72C0138ABFF /* StickyThingsApp.swift */,
+				10FDC90B164E7057754DE90C /* App */,
+				A59D08F75F91D3114EE7CF78 /* Components */,
+				7DEEFB6B6414931B451DE1B1 /* Features */,
+				663AB52A56FC933551BA2832 /* Services */,
 			);
 			path = StickyThingsIOS;
+			sourceTree = "<group>";
+		};
+		E6B959B6B8EE67A8CC24EB68 /* Composer */ = {
+			isa = PBXGroup;
+			children = (
+				F0E1E174625DD9A74842717E /* ComposerBar.swift */,
+			);
+			path = Composer;
 			sourceTree = "<group>";
 		};
 		F867EFAAF69FFE3A5961F961 /* Sources */ = {
@@ -247,6 +315,7 @@
 			name = StickyThingsHomeWidget;
 			packageProductDependencies = (
 				2438C7BC7CCAE248B1AC3875 /* StickyCore */,
+				F529396835E4B6074EE387EC /* StickyIOSDesign */,
 			);
 			productName = StickyThingsHomeWidget;
 			productReference = 37D3914B23FA5293EC3132BD /* StickyThingsHomeWidget.appex */;
@@ -288,6 +357,7 @@
 			name = StickyThings;
 			packageProductDependencies = (
 				C7151D444C3396BA59F85891 /* StickyCore */,
+				A4614377926B6ABA846F27F5 /* StickyIOSDesign */,
 			);
 			productName = StickyThings;
 			productReference = F106213A8D83846015BCB794 /* StickyThings.app */;
@@ -307,6 +377,7 @@
 			name = StickyThingsShare;
 			packageProductDependencies = (
 				0D9B9BEA499E94669E2B5C71 /* StickyCore */,
+				0CBC89A357DE8E57F1C96DA1 /* StickyIOSDesign */,
 			);
 			productName = StickyThingsShare;
 			productReference = 7B35148F74604CE2ED6CB429 /* StickyThingsShare.appex */;
@@ -380,20 +451,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				46906D5253671C5F48F63C5F /* ActivityView.swift in Sources */,
-				F6868D255B67FA6C2D0F7DA2 /* CaptionEditorView.swift in Sources */,
-				FADE78319F63B4D749819932 /* DemoContent.swift in Sources */,
-				1462E00AF75D96D6FE80E7FB /* EditNoteView.swift in Sources */,
-				CAE22FD227DBF94F52149847 /* IOSTheme.swift in Sources */,
-				9663857858230AD385E67F3C /* ItemDetailView.swift in Sources */,
-				EF743F50A7F905F7B28E426D /* ItemRow.swift in Sources */,
-				8995C16594CA28B5BF942E73 /* ItemThumbnailView.swift in Sources */,
-				F2AB0315D5AA775C550E9DF3 /* Library.swift in Sources */,
+				77746A4350DE03E8C8AA96F1 /* ActivityView.swift in Sources */,
+				487EA1C8A227E3982DEA213B /* CaptionEditorView.swift in Sources */,
+				CEEB14086FE0E46CEBB38BA2 /* ComposerBar.swift in Sources */,
+				8003468EF77432058F7090B5 /* DemoContent.swift in Sources */,
+				069A14E33CBDDB33BB6DA45E /* EditNoteView.swift in Sources */,
+				E978D0D2CD8A64BB724C9CD8 /* EmptyLibraryView.swift in Sources */,
+				82D6C07A927486BEA6E185A4 /* ItemDetailView.swift in Sources */,
+				2ECD223F6BBD719B5AFD1A9D /* ItemRow.swift in Sources */,
+				8F391CC9AB18E77D6500EAA8 /* ItemThumbnailView.swift in Sources */,
+				8F2DCF573314180B3F883747 /* Library.swift in Sources */,
+				D8A6203BA9FA1F8E7CFA0D3E /* LibraryView.swift in Sources */,
 				AB9CB9D79A41009DC9560340 /* QuickCaptureControl.swift in Sources */,
-				5058ED35E4F2A131224F1502 /* RootView.swift in Sources */,
-				C0B38764A97FC80C366B1A02 /* SpotlightIndexer.swift in Sources */,
-				DC606D132D0661D4AA290626 /* StickyIntents.swift in Sources */,
-				A0C43787961850971D92D9A0 /* StickyThingsApp.swift in Sources */,
+				AF3FC3643D713F9F59C320CF /* QuickCaptureRouter.swift in Sources */,
+				E8F95A25DE12D219AF29AB80 /* SpotlightIndexer.swift in Sources */,
+				C85E5E0D115F8D2518BF8935 /* StickyIntents.swift in Sources */,
+				84580DE58260B45E92E62A43 /* StickyThingsApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -821,6 +894,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0CBC89A357DE8E57F1C96DA1 /* StickyIOSDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StickyIOSDesign;
+		};
 		0D9B9BEA499E94669E2B5C71 /* StickyCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StickyCore;
@@ -829,9 +906,17 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = StickyCore;
 		};
+		A4614377926B6ABA846F27F5 /* StickyIOSDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StickyIOSDesign;
+		};
 		C7151D444C3396BA59F85891 /* StickyCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StickyCore;
+		};
+		F529396835E4B6074EE387EC /* StickyIOSDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StickyIOSDesign;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

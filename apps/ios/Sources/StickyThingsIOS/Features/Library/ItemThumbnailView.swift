@@ -1,4 +1,5 @@
 import StickyCore
+import StickyIOSDesign
 import SwiftUI
 
 /// A local thumbnail, loaded from the same blob store the Mac app uses.
@@ -17,11 +18,11 @@ struct ItemThumbnailView: View {
                     .clipped()
             } else {
                 Rectangle()
-                    .fill(IOSTheme.field)
+                    .fill(StickyPalette.surfaceSunken)
                     .overlay {
-                        Image(systemName: item.kind.iosSymbol)
-                            .font(.system(size: 28, weight: .medium))
-                            .foregroundStyle(.secondary)
+                        Image(systemName: StickyKind.symbol(for: item.kind))
+                            .font(.title2.weight(.medium))
+                            .foregroundStyle(StickyPalette.textSecondary)
                     }
             }
         }

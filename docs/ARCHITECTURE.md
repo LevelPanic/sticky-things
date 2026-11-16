@@ -5,8 +5,9 @@ Sticky Things is a monorepo. A shared Swift core powers the Apple apps, while ea
 ```text
 packages/StickyCore      items, lossless capture model, SQLite, blobs, files   (no SwiftUI; macOS + iOS)
 packages/StickyDesign    tokens + components                                  (macOS design system)
+packages/StickyIOSDesign iOS tokens + components                              (app, Share extension, widgets)
 apps/macos               the Mac app: corner, panel, onboarding, settings, menu bar
-apps/ios                 the iPhone app, Share extension and Control widget
+apps/ios                 the iPhone app, Share extension, Home Screen widget and Control widget
 ```
 
 ## The one idea: capture losslessly, give back exactly
@@ -80,13 +81,20 @@ The Mac library lives in `~/Library/Application Support/Sticky Things/`. The iOS
 
 ### iOS
 
+The app target is organized by responsibility: `App/` (entry point, router, demo data), `Features/` (`Library`, `Composer`, `Editing`), `Services/` (`Library`, Spotlight, intents) and `Components/`. Every target renders through `StickyIOSDesign`.
+
 | Piece | Job |
 |---|---|
 | `Library` | Wraps the shared `ItemStore` and `CaptureService`, owns search/filter state, and forwards store changes to SwiftUI. The store opens after the first view frame so the composer appears immediately. |
-| `RootView`, `ItemRow`, `ItemDetailView` | Native list, persistent ChatGPT-style composer, context menus, swipe actions, search, item detail, system share sheet and Quick Look. |
-| `StickyThingsShare` extension | Receives text, URLs, images and files from other apps. `ItemProviderCapture` normalizes providers into a `CapturedClip`; the extension saves it into the shared App Group library. |
+| `LibraryView` | The native library: large title, searchable list, pinned and recent sections, filter menu, sheets, Quick Look, share sheet and iPad drop. |
+| `ComposerBar` | The persistent ChatGPT-style input bar: AppStorage draft, paperclip Photos/Files menu, growing field and send button. It is not a sheet. |
+| `ItemRow`, `ItemDetailView`, `EmptyLibraryView`, `ItemThumbnailView` | The card row, detail screen, first-run tips and blob thumbnails, all built from shared tokens and components. |
+| `CaptionEditorView`, `EditNoteView` | The two editors, presented as native sheets with their own toolbars. |
+| `QuickCaptureRouter` | Focuses the composer once per Action Button, Control Center, quick action, URL or App Group request, including a cold launch. |
+| `packages/StickyIOSDesign` | Semantic colors, paper/ink pairs, Dynamic Type styles, spacing, radii, sizes, motion, item symbols, dates, cards, fields, kind tiles, icon buttons, action tiles, toasts and the mini note. |
+| `StickyThingsShare` extension | Receives text, URLs, images and files from other apps. `ItemProviderCapture` normalizes providers into a `CapturedClip`; the extension saves it into the shared App Group library through the same `CaptureService`. |
 | `StickyThingsWidgets` | A `ControlWidget` for Control Center, the Lock Screen and the Action Button. It runs `OpenStickyThingIntent`, an `OpenIntent` shared with the app, so the system launches Sticky Things without a URL confirmation. |
-| `StickyThingsWidget` | A separate WidgetKit extension for the Home Screen and Lock Screen accessories. It reads pinned and recent items from the App Group, downsamples image thumbnails, shows count and relative time, and links each row to `stickythings://item/<uuid>`. |
+| `StickyThingsWidget` | A separate WidgetKit extension for the Home Screen and Lock Screen accessories. It reads pinned and recent items from the App Group, downsamples image thumbnails, shows count and compact relative time, and links each row to `stickythings://item/<uuid>`. |
 | `QuickCaptureFlag` | The small App Group flag the control writes and the app consumes when it becomes active; it focuses the composer. |
 | `StickyIntents` | App Shortcuts and Siri actions: New Sticky Thing and Save to Sticky Things. |
 | `SpotlightIndexer` | Indexes item titles, captions and text in the private on-device Spotlight index; concealed items are never indexed. |
@@ -102,6 +110,7 @@ The Mac library lives in `~/Library/Application Support/Sticky Things/`. The iOS
 * **The corner has two drop speeds.** A quick drop on it saves without opening anything. Holding the drag there for the configured delay (with a short shake and a configurable catch area) opens the panel so the thing can be dropped into the stack, with its caption editor and the rest of the panel one step away. Opening this way does not activate the app or take the keyboard away from the drag's source.
 * **Captions are not capture content.** `Item.caption` is stored next to the lossless snapshot, not in it, so adding words to an image or PDF never changes what that item gives back when copied. Captions are searchable and editable on the card with the same inline editor as notes.
 * **iOS is designed for iOS, not shrunk from the Mac.** The Mac's floating panel, hot corner and pointer grid have no place on a phone. The iOS app uses a native list, search, sheets, context menus, swipe actions, the system share sheet, Quick Look, Paste, Photos and Files pickers, and the system entry points people already know.
+* **One iOS design system serves the app, Share extension and Home Screen widget.** They compile `packages/StickyIOSDesign`. It depends only on `StickyCore` and SwiftUI, so it can describe an item's symbol and paper without pulling in app state or storage. Semantic system colors and Dynamic Type styles mean dark mode, Increase Contrast and larger text keep working in every process. The Control widget stays a system control. `DesignLintTests` scans all four target sources for raw colors, numeric spacing and the old per-target theme aliases.
 * **The composer paints before the library opens.** SwiftUI builds the shell, list placeholder and bottom composer first; `Library.load` opens SQLite after that frame, then defers garbage collection, the old-note import and Spotlight indexing by a beat. Along with a launch-screen color asset, this keeps the path from the Action Button to a blinking cursor short and avoids blocking the first paint on disk work.
 * **One library, several processes.** The iOS app, Share extension and Control widget are separate sandboxes. App Group storage plus `ItemProviderCapture` keep them on one library and one lossless item format. The control uses an `OpenIntent` with a shared App Group flag, not a custom URL, so the system launches the app directly instead of asking "Open in Sticky Things?".
 * **Spotlight is private and selective.** iOS indexes item titles, captions and text in the on-device Spotlight index. Concealed password-manager copies are never indexed. The index is not synced anywhere.

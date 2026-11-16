@@ -35,11 +35,7 @@ final class DesignLintTests: XCTestCase {
     ]
 
     func testUISourceFollowsTheDesignSystem() throws {
-        var root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        while !FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path),
-              root.path != "/" {
-            root.deleteLastPathComponent()
-        }
+        let root = repoRoot()
         let folders = ["apps/macos/Sources/StickyThings", "packages/StickyDesign/Sources/StickyDesign"]
             .map { root.appendingPathComponent($0) }
         var violations: [String] = []
@@ -67,5 +63,80 @@ final class DesignLintTests: XCTestCase {
         }
         XCTAssertGreaterThan(scanned, 10, "should scan the UI sources")
         XCTAssert(violations.isEmpty, "\n" + violations.joined(separator: "\n"))
+    }
+
+    // MARK: - iOS
+
+    /// The iOS app, widget and share extension share `StickyIOSDesign`. These rules keep
+    /// them from drifting back to one-off colors, paddings and fonts.
+    private static let iosRules: [Rule] = [
+        Rule(name: "No pre-design-system theme aliases (use StickyIOSDesign)",
+             pattern: #"\b(IOSTheme|IOSDate|WidgetTheme)\b|\.iosPaper\b|\.iosInk\b|\.iosSecondaryInk\b|\.iosSymbol\b|\.widgetPaper\b|\.widgetSymbol\b"#,
+             allowedFiles: ["DemoContent.swift"]),
+        Rule(name: "No raw colors outside the palette (use StickyPalette or StickyTintPalette)",
+             pattern: #"Color\(red:|UIColor\(red:|\.white\b|\.black\b"#,
+             allowedFiles: ["DemoContent.swift"]),
+        Rule(name: "No raw numeric padding (use StickySpace or StickyMetrics)",
+             pattern: #"\.padding\([0-9]+\)"#,
+             allowedFiles: ["DemoContent.swift"]),
+        Rule(name: "No raw numeric spacing (use StickySpace)",
+             pattern: #"spacing: [1-9][0-9]*"#,
+             allowedFiles: ["DemoContent.swift"]),
+        Rule(name: "No raw numeric corner radius (use StickyRadius)",
+             pattern: #"cornerRadius: [0-9]+"#,
+             allowedFiles: ["DemoContent.swift"]),
+        Rule(name: "No raw numeric font sizes (use StickyType or Dynamic Type styles)",
+             pattern: #"\.system\(size: [0-9.]+"#,
+             allowedFiles: ["DemoContent.swift"]),
+        Rule(name: "No one-off nudges of tokens: use or add a token",
+             pattern: #"\bSticky(Space|Radius|Metrics)\.[a-zA-Z]+ *[-+] *[0-9]"#),
+        Rule(name: "No bouncy or springy motion (use StickyMotion)",
+             pattern: #"\.bouncy|\.snappy|\.spring\(|interpolatingSpring"#),
+        Rule(name: "No decorative gradients",
+             pattern: #"LinearGradient|RadialGradient|AngularGradient|\.gradient\b"#),
+        Rule(name: "No em dashes in UI copy", pattern: #""[^"]*—[^"]*""#),
+        Rule(name: "No exclamation marks in UI copy", pattern: #""[A-Z][^"\\]*!""#),
+    ]
+
+    func testIOSSourceFollowsTheDesignSystem() throws {
+        let root = repoRoot()
+        let folders = ["apps/ios/Sources/StickyThingsIOS", "apps/ios/Sources/StickyThingsWidget",
+                       "apps/ios/Sources/StickyThingsShare", "apps/ios/Sources/Shared"]
+            .map { root.appendingPathComponent($0) }
+        var violations: [String] = []
+        var scanned = 0
+
+        for folder in folders {
+            let files = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)?
+                .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+            for file in files {
+                scanned += 1
+                let lines = try String(contentsOf: file, encoding: .utf8).components(separatedBy: .newlines)
+                for (index, rawLine) in lines.enumerated() {
+                    let line = rawLine.trimmingCharacters(in: .whitespaces)
+                    if line.hasPrefix("//") || line.hasPrefix("///") || line.hasPrefix("*") { continue }
+                    let code = rawLine.components(separatedBy: " // ").first ?? rawLine
+                    for rule in Self.iosRules where !rule.allowedFiles.contains(file.lastPathComponent) {
+                        let regex = try NSRegularExpression(pattern: rule.pattern)
+                        for match in regex.matches(in: code, range: NSRange(code.startIndex..., in: code)) {
+                            if let check = rule.check, !check(match, code) { continue }
+                            violations.append("\(file.lastPathComponent):\(index + 1)  \(rule.name)\n    \(line)")
+                        }
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(scanned, 10, "should scan the iOS sources")
+        XCTAssert(violations.isEmpty, "\n" + violations.joined(separator: "\n"))
+    }
+
+    private func repoRoot() -> URL {
+        var root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        while !FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path),
+              root.path != "/" {
+            root.deleteLastPathComponent()
+        }
+        XCTAssertNotEqual(root.path, "/", "should find the repository root")
+        return root
     }
 }

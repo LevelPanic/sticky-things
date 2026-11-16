@@ -23,6 +23,12 @@ A native iOS companion to the Mac app. The idea is not to shrink the Mac panel o
 - **Native gestures:** text paste, context menus, swipe actions, share sheet, Quick Look on iPad, and drag and drop into the list.
 - **Same library format:** the iOS app and its Share extension use the same SQLite schema, blob store and item JSON as the Mac app.
 
+## Design
+
+The app, Share extension and Home Screen widget share `packages/StickyIOSDesign`. It defines semantic system colors, the sticky paper and ink pairs, Dynamic Type styles, the 4 pt spacing grid, radii, sizes, reduce-motion-aware animations, item symbols, relative dates, and the shared card, field, kind tile, icon button, action tile, toast and mini-note components. The Control widget stays a system control.
+
+Sticky paper stays a surface and never becomes body text; controls otherwise use system surfaces and button styles. Because the tokens use semantic UIKit colors and text styles, dark mode, Increase Contrast and larger text work across the app, Share extension and Home Screen widget. `make test-design` lints the iOS source and fails on raw colors, raw numeric spacing or radii, raw font sizes and the old per-target theme aliases.
+
 ## Build
 
 You need Xcode 26 or newer and iOS 18 or newer. The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen), which is installed by Homebrew.

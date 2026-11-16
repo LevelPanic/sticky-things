@@ -1,4 +1,5 @@
 import StickyCore
+import StickyIOSDesign
 import SwiftUI
 
 /// Add text to an image, PDF or file. The same `Item.caption` field as the Mac app.
@@ -18,29 +19,28 @@ struct CaptionEditorView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
-                    Image(systemName: item.kind.iosSymbol)
-                        .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: StickySpace.m) {
+                HStack(spacing: StickySpace.s) {
+                    Image(systemName: StickyKind.symbol(for: item.kind))
+                        .foregroundStyle(StickyPalette.textSecondary)
                     Text(item.headline)
-                        .font(.subheadline.weight(.medium))
+                        .font(StickyType.button)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
                 TextEditor(text: $text)
                     .focused($focused)
-                    .font(.body)
+                    .font(StickyType.body)
                     .scrollContentBackground(.hidden)
-                    .padding(8)
-                    .frame(minHeight: 140)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(IOSTheme.field))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.quaternary))
+                    .padding(StickySpace.s)
+                    .frame(minHeight: StickyMetrics.detailThumbnail * 0.5)
+                    .stickyField(radius: StickyRadius.action, fill: StickyPalette.surfaceSunken)
                 Text("Saved with the item, never inside the original file. Captions are searchable.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(StickyType.meta)
+                    .foregroundStyle(StickyPalette.textSecondary)
             }
-            .padding(16)
-            .background(IOSTheme.page)
+            .padding(StickyMetrics.contentInset)
+            .background(StickyPalette.page)
             .navigationTitle(item.caption == nil ? "Add Caption" : "Edit Caption")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

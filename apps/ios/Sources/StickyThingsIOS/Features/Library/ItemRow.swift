@@ -1,4 +1,5 @@
 import StickyCore
+import StickyIOSDesign
 import SwiftUI
 import UIKit
 
@@ -46,38 +47,34 @@ struct ItemRow: View {
                 rowBody(title: title, detail: detail)
             }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(tint == .none ? IOSTheme.card : tint.iosPaper)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(StickyMetrics.cardPadding)
+        .stickyCard(tint: tint == .none ? nil : StickyTintPalette.paper(tint))
     }
 
     // MARK: Bodies
 
     private var noteBody: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: StickySpace.s) {
             Text(item.text)
-                .font(.body)
-                .lineSpacing(3)
+                .font(StickyType.body)
+                .lineSpacing(StickyMetrics.bodyLineSpacing)
                 .lineLimit(10)
-                .foregroundStyle(tint.iosInk)
+                .foregroundStyle(StickyTintPalette.ink(tint))
                 .frame(maxWidth: .infinity, alignment: .leading)
             meta(detail: item.kind == .richText ? "Formatted" : nil)
         }
     }
 
     private var imageBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: StickySpace.s) {
             ItemThumbnailView(item: item, library: library)
                 .frame(maxWidth: .infinity)
-                .frame(height: 180)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(height: StickyMetrics.thumbnail)
+                .clipShape(RoundedRectangle(cornerRadius: StickyRadius.m, style: .continuous))
             if let caption = item.caption, !caption.isEmpty {
                 Text(caption)
-                    .font(.body)
-                    .foregroundStyle(.primary)
+                    .font(StickyType.body)
+                    .foregroundStyle(StickyPalette.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             meta(detail: imageDetail)
@@ -85,28 +82,19 @@ struct ItemRow: View {
     }
 
     private func rowBody(title: String, detail: String, swatch: Color? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(swatch ?? IOSTheme.field)
-                    if swatch == nil {
-                        Image(systemName: item.kind.iosSymbol)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(width: 40, height: 40)
+        VStack(alignment: .leading, spacing: StickySpace.s) {
+            HStack(spacing: StickySpace.m) {
+                StickyKindTile(kind: item.kind, tint: item.tint, swatch: swatch, size: StickyMetrics.rowIcon)
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(StickyType.cardTitle)
                     .lineLimit(2)
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let caption = item.caption, !caption.isEmpty {
                 Text(caption)
-                    .font(.body)
-                    .foregroundStyle(.primary)
+                    .font(StickyType.body)
+                    .foregroundStyle(StickyPalette.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             meta(detail: detail)
@@ -114,19 +102,19 @@ struct ItemRow: View {
     }
 
     private func meta(detail: String?) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: StickySpace.xxs) {
             if let detail, !detail.isEmpty {
                 Text(detail).lineLimit(1).truncationMode(.middle)
             }
-            Spacer(minLength: 6)
+            Spacer(minLength: StickySpace.xs)
             if item.pinned {
-                Image(systemName: "pin.fill").font(.system(size: 10))
+                Image(systemName: "pin.fill").font(StickyType.meta)
             }
-            Text(item.source?.name.map { "\($0) · \(IOSDate.short(item.createdAt))" } ?? IOSDate.short(item.createdAt))
+            Text(item.source?.name.map { "\($0) · \(StickyRelativeTime.short(item.createdAt))" } ?? StickyRelativeTime.short(item.createdAt))
                 .monospacedDigit()
         }
-        .font(.caption)
-        .foregroundStyle(tint.iosSecondaryInk)
+        .font(StickyType.meta)
+        .foregroundStyle(StickyTintPalette.secondaryInk(tint))
     }
 
     // MARK: Details
@@ -212,9 +200,10 @@ struct ItemRowAccessibility: ViewModifier {
     func body(content: Content) -> some View {
         content
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(item.kind.label), \(item.headline), \(IOSDate.short(item.createdAt))")
+            .accessibilityLabel("\(item.kind.label), \(item.headline), \(StickyRelativeTime.short(item.createdAt))")
             .accessibilityHint("Copies to the clipboard")
             .accessibilityAddTraits(.isButton)
+            .accessibilityAction { library.copy(item) }
             .accessibilityAction(named: "Copy") { library.copy(item) }
             .accessibilityAction(named: "Show Details") { onOpen() }
             .accessibilityAction(named: item.pinned ? "Unpin" : "Pin") { library.togglePin(item) }

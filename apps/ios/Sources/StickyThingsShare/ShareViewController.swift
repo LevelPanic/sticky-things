@@ -1,4 +1,5 @@
 import StickyCore
+import StickyIOSDesign
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -37,15 +38,15 @@ private struct ShareView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: StickySpace.l) {
                 header
                 preview
                 if let error {
                     Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                        .font(StickyType.meta)
+                        .foregroundStyle(StickyPalette.danger)
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: StickySpace.s)
                 Button {
                     save()
                 } label: {
@@ -57,11 +58,12 @@ private struct ShareView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(StickyPalette.accent)
                 .controlSize(.large)
                 .disabled(loading || saving || clip?.isEmpty != false)
             }
-            .padding(20)
-            .background(Color(uiColor: .systemGroupedBackground))
+            .padding(StickySpace.l)
+            .background(StickyPalette.page)
             .navigationTitle("Sticky Things")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -74,63 +76,65 @@ private struct ShareView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: StickySpace.m) {
             Image(systemName: "note.text")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.orange)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Save to Sticky Things").font(.headline)
+                .font(.title2.weight(.semibold))
+                .frame(width: StickyMetrics.rowIcon, height: StickyMetrics.rowIcon)
+                .background(
+                    RoundedRectangle(cornerRadius: StickyRadius.m, style: .continuous)
+                        .fill(StickyTintPalette.paper(.yellow))
+                )
+                .foregroundStyle(StickyTintPalette.ink(.yellow))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: StickySpace.xxs) {
+                Text("Save to Sticky Things").font(StickyType.cardTitle)
                 Text(loading ? "Reading what you shared…" : "Ready to keep it on this iPhone.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(StickyType.meta)
+                    .foregroundStyle(StickyPalette.textSecondary)
             }
         }
     }
 
     @ViewBuilder private var preview: some View {
         if loading {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            RoundedRectangle(cornerRadius: StickyRadius.l, style: .continuous)
+                .fill(StickyPalette.surface)
                 .frame(height: 140)
                 .overlay(ProgressView())
         } else if let clip, let text = clip.plainText, !text.isEmpty, clip.fileURLs.isEmpty {
             ScrollView {
                 Text(text)
-                    .font(.body)
+                    .font(StickyType.body)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
-                    .padding(16)
+                    .padding(StickySpace.l)
             }
             .frame(maxHeight: 220)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground)))
+            .stickyCard()
         } else if let clip, let image = sharedImage(clip) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
                 .frame(maxHeight: 240)
                 .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: StickyRadius.l, style: .continuous))
         } else if let first = clip?.fileURLs.first {
-            HStack(spacing: 12) {
-                Image(systemName: "doc")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(first.lastPathComponent).font(.body.weight(.medium)).lineLimit(2)
+            HStack(spacing: StickySpace.m) {
+                StickyKindTile(kind: .file, size: StickyMetrics.rowIcon)
+                VStack(alignment: .leading, spacing: StickySpace.xs) {
+                    Text(first.lastPathComponent).font(StickyType.button).lineLimit(2)
                     Text(clip.map { $0.fileURLs.count == 1 ? "File" : "\($0.fileURLs.count) files" } ?? "")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(StickyType.meta)
+                        .foregroundStyle(StickyPalette.textSecondary)
                 }
                 Spacer()
             }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground)))
+            .padding(StickySpace.l)
+            .stickyCard()
         } else {
             Text("Nothing readable was shared.")
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .font(StickyType.body)
+                .foregroundStyle(StickyPalette.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

@@ -80,13 +80,39 @@ Every measurement in the panel comes from this grid. `LayoutRules` (in `App/Layo
 
 ## iOS design
 
-The iOS app is a separate design, not the Mac panel squeezed onto a phone. It follows the iOS HIG and leans on system surfaces:
+The iOS app is a separate design, not the Mac panel squeezed onto a phone. It follows the iOS HIG and leans on system surfaces. The app, Share extension and Home Screen widget import one shared module, `packages/StickyIOSDesign`, so they cannot drift apart. The Control widget stays a pure system control: it opens the app and has no item UI of its own.
+
+### `StickyIOSDesign`
+
+The module holds presentation only: tokens, item symbols and small shared components. It never imports app state or opens storage. `Tokens.swift` defines the scales; `Components.swift` defines the shared surfaces. A target never hard-codes a color, font size, padding, spacing, corner radius or SF Symbol for an item kind.
+
+| Group | Where | Rules |
+|---|---|---|
+| Color | `StickyPalette` | Semantic UIKit colors (`systemGroupedBackground`, `label`, `separator`, …), so dark mode, Increase Contrast and system appearance changes come for free. Sticky yellow is a **surface**, never body text. |
+| Paper | `StickyTintPalette` | One paper and ink pair for every `Tint`, including a dark paper. `StickyKind` maps each `ItemKind` to one SF Symbol, shared by the list, detail, Share extension and widget. |
+| Type | `StickyType` | Semantic Dynamic Type styles only (`title2`, `headline`, `body`, `caption`, …). Nothing below 11 pt; widget sizes use the compact `widgetHeader`, `widgetRow` and `widgetMeta`. |
+| Space | `StickySpace` | A 4 pt grid: 2, 4, 8, 12, 16, 24, 32. No one-off nudges like `StickySpace.xl - 4`; use a token or add one. |
+| Radius | `StickyRadius` | 6, 8, 12, 18, 24, with 22 for the composer field and 14 for editor wells. Cards use 18, icon plates 8. |
+| Size | `StickyMetrics` | 44 pt minimum touch target, 32 pt icon plate, 40 pt row icon, 34 pt send button, 44 pt composer field, 16 pt card padding and content inset, six widget items. |
+| Motion | `StickyMotion` | Short ease-out; `.smooth` for emphasized state. Reduce Motion becomes a crossfade, never a spring. |
+
+| Component | Notes |
+|---|---|
+| `stickyCard` / `StickyCardSurface` | The list and detail surface: quiet fill, hairline border, 2 pt accent ring when highlighted. Brand paper is passed in as a tint. |
+| `stickyField` / `StickyFieldSurface` | The rounded well for the composer and editors. |
+| `StickyKindTile` | The 40 pt icon plate for a kind. The symbol carries the meaning; color is a supporting cue. A swatch can replace it for colors, and a fill can match paper. |
+| `StickyIconButton` | A 44 pt target with a restrained 32 pt visual plate, normal or destructive. |
+| `StickyActionButton` | The equal-width detail actions (Copy, Share, Edit, Caption). |
+| `StickyToastView` | The inverse capsule for one-line confirmations. |
+| `StickyMiniNote` | The empty-state note illustration, the iOS counterpart of `MiniStickyNote`. |
+
+### Screens and system behavior
 
 * **Library.** A native large-title screen with a search field, pinned and recent sections, inset card rows, context menus and swipe actions. Sticky tints remain the brand surface, but the layout, type and controls are iOS.
 * **Composer.** A persistent ChatGPT-style bar at the bottom of the library, not a plus button and a modal sheet. A paperclip on the left opens Photos or Files, the text field grows from one to five lines, and a circular send button sits on the right. The Action Button, Control Center and Home Screen quick action focus it immediately. Drafts survive closing the app.
 * **Launch.** The first frame is the composer and chrome, not a spinner over a blocked database. SQLite opens after the view appears; maintenance, Spotlight indexing and demo seeding wait a beat; the launch screen uses the same background color as the app. The result is a fast, direct path from the Action Button to a blinking cursor.
 * **System entry points.** The control uses the system control style and a specific display name, "New Sticky Thing". App Shortcuts use short titles and SF Symbols. The share extension is a single native screen with one Save action, per the share extension guidelines.
-* **Widget.** The Home Screen widget is a sticky note on the system Home Screen: pinned items first, then recent, in small, medium and large sizes. It uses system fonts, relative dates, deep links per row and a native configuration sheet, plus accessory variants for the Lock Screen. The large size has one New Sticky Thing button. It is not a miniature version of the app: only the item title, a small detail, a kind icon or thumbnail and the time.
+* **Widget.** The Home Screen widget is a sticky note on the system Home Screen: pinned items first, then recent, in small, medium and large sizes. It uses the shared `StickyPalette` paper and ink, `StickyType` widget styles, `StickyRelativeTime.compact`, `StickyKindTile`, deep links per row and a native configuration sheet, plus accessory variants for the Lock Screen. The large size has one New Sticky Thing button. It is not a miniature version of the app: only the item title, a small detail, a kind icon or thumbnail and the time.
 * **System components over custom ones.** `ContentUnavailableView` for empty search and filters, `ShareLink`/`UIActivityViewController` for sharing, Quick Look for previews, PhotosPicker and fileImporter for capture, `.searchable`, sheets and confirmation dialogs for the rest.
 * **Adaptive by default.** Semantic colors support dark mode, system text styles support Dynamic Type, touch targets stay at least 44 pt, and iPad gets keyboard shortcuts, drag and drop, and a wider reading layout without a bespoke phone-only layout.
 * **Detail.** The item detail screen uses a large preview, a caption block, metadata, and a short action row (Copy, Share, Edit, Quick Look, Delete). It is the destination for Spotlight results and context-menu "Show Details".
@@ -112,7 +138,7 @@ Settings uses the system's own layout, like System Settings: a native sidebar (`
 ## Enforced automatically (`swift test`)
 
 * **`ContrastTests`:** every text/surface pair in light and dark. Text needs ≥ 4.5:1, primary text ≥ 7:1, ink on every note paper ≥ 7:1, and borders and icons ≥ 3:1. Hints need ≥ 3:1 and must stay quieter than secondary text.
-* **`DesignLintTests`:** scans the UI source and fails on:
+* **`DesignLintTests`:** scans the Mac sources and the iOS app, Share extension, widget and shared intents, and fails on:
   * bouncy or spring animations
   * uppercased or tracked labels
   * decorative gradients
@@ -121,8 +147,9 @@ Settings uses the system's own layout, like System Settings: a native sidebar (`
   * text under 11 pt
   * em dashes or exclamation marks in UI copy
   * vague button labels
-  * one-off nudges of tokens (`Space.s - 2`, `Radius.l + 4`)
+  * one-off nudges of tokens (`Space.s - 2`, `Radius.l + 4`, `StickySpace.xl - 4`)
   * reading the desktop picture (it can need a Files & Folders permission; decoration never asks for one)
+  * on iOS, the old `IOSTheme`/`WidgetTheme` aliases, raw numeric padding, spacing, corner radii or font sizes, and raw colors outside `StickyPalette`
 * **`LayoutRules`** (the self-test and `make layout`): the Panel grid above, measured on the real panel.
 
 ## Checked by hand each release

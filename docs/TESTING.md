@@ -3,9 +3,9 @@
 Seven layers, from fastest to most realistic. The Mac layers use throwaway libraries and private pasteboards; the iOS layer builds the app and its extensions. The Mac self-test and layout audit open real windows: run them on an unlocked Mac and don't type or click while they run.
 
 ```bash
-make test        # 1–3: all 46 unit tests (core, design, app logic)
+make test        # 1–3: all 47 unit tests (core, design, app logic)
 make test-core   # just the shared capture and storage tests
-make test-design # just the macOS design system tests
+make test-design # design system, contrast and lint tests (Mac and iOS source)
 make test-app    # just the macOS app logic tests
 make test-macos  # all macOS-specific tests (design + app logic)
 make test-filter FILTER=PanelModel
@@ -47,7 +47,7 @@ These cover everything about capture and storage, using private pasteboards (`NS
 ## 2. Design system (`packages/StickyDesign/Tests/StickyDesignTests`)
 
 * **`ContrastTests`:** WCAG ratios for every token pair, in light and dark.
-* **`DesignLintTests`:** fails the build on design drift (see [DESIGN.md](DESIGN.md)).
+* **`DesignLintTests`:** fails the build on design drift in the Mac sources and in the iOS app, Share extension, widgets and shared intents (see [DESIGN.md](DESIGN.md)). The iOS pass also catches raw numeric padding, spacing, corner radii and font sizes, raw colors, and the old `IOSTheme`/`WidgetTheme` aliases.
 * **`InlineEditHandleTests`:** a late editor never unhooks the one that replaced it; two platform views for the same edit leave the survivor in charge; an editor from another edit is not treated as a duplicate.
 
 ## 3. App logic (`apps/macos/Tests/StickyThingsTests`)
@@ -111,7 +111,7 @@ These render the panel (light and dark, full and empty), every onboarding step, 
 
 ## 7. iOS (`apps/ios`)
 
-`make ios-build` compiles the iOS app, its Share extension, Home Screen widget and Control widget for the simulator without signing. The shared `StickyCore` unit tests from layer 1 run on the Mac and cover the same storage and item code the iOS app uses.
+`make ios-build` compiles the iOS app, its Share extension, Home Screen widget and Control widget for the simulator without signing. The shared `StickyCore` unit tests from layer 1 run on the Mac and cover the same storage and item code the iOS app uses. `StickyIOSDesign` is compiled into the app, Share extension and Home Screen widget; `DesignLintTests` scans all four target sources for token drift.
 
 **Simulator smoke test.** Build, install into an iPhone simulator, and launch with these debug arguments:
 
@@ -120,9 +120,10 @@ xcrun simctl install booted "build/ios/Build/Products/Debug-iphonesimulator/Stic
 xcrun simctl launch booted app.stickythings.StickyThings --demo
 xcrun simctl launch booted app.stickythings.StickyThings --composer
 xcrun simctl launch booted app.stickythings.StickyThings --detail
+xcrun simctl launch booted app.stickythings.StickyThings --composer --draft
 ```
 
-`--demo` seeds a throwaway library, `--composer` focuses the persistent composer, and `--detail` opens an item's detail screen. The current screenshots in `docs/ios-*.png` come from this path.
+`--demo` seeds a throwaway library, `--composer` focuses the persistent composer, `--draft` fills it with sample text for a screenshot, and `--detail` opens an item's detail screen. The current screenshots in `docs/ios-*.png` come from this path.
 
 **Manual device pass.** The system parts do not exist in the simulator:
 
