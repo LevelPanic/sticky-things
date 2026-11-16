@@ -6,9 +6,9 @@ import UIKit
 @MainActor
 enum DemoContent {
     static func seedIfRequested(in library: Library) {
-        guard CommandLine.arguments.contains("--demo"), library.store.items.isEmpty else { return }
-        let store = library.store
-        let capture = library.capture
+        guard CommandLine.arguments.contains("--demo"),
+              let store = library.store, let capture = library.capture,
+              store.items.isEmpty else { return }
 
         if case .saved(let items)? = capture.saveNote("Wi-Fi: Garden-5G · password is on the fridge"),
            let id = items.first?.id {

@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		1462E00AF75D96D6FE80E7FB /* EditNoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6DA88476869336BDD1C34B6 /* EditNoteView.swift */; };
-		24C110A0985F014CF321934A /* QuickCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C8D52584524776A35E5B677 /* QuickCaptureView.swift */; };
 		335384336701B65ACC4E5EAA /* StickyCore in Frameworks */ = {isa = PBXBuildFile; productRef = C7151D444C3396BA59F85891 /* StickyCore */; };
 		46906D5253671C5F48F63C5F /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A02E5E5D211334B5E1A919 /* ActivityView.swift */; };
 		478211BFABEB2CBD5DB0AD52 /* StickyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2438C7BC7CCAE248B1AC3875 /* StickyCore */; };
@@ -79,7 +78,6 @@
 /* Begin PBXFileReference section */
 		08B9AB7999C490C6415F85AC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		136A1C65FF14CE46C62AA316 /* SpotlightIndexer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightIndexer.swift; sourceTree = "<group>"; };
-		1C8D52584524776A35E5B677 /* QuickCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureView.swift; sourceTree = "<group>"; };
 		1E3868782ED199ACB62E04BC /* StickyThingsWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = StickyThingsWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		20B2D6171715C78D5368D66A /* StickyThingsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyThingsWidget.swift; sourceTree = "<group>"; };
 		21D5B770550CCD2BD1DD72CE /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
@@ -212,7 +210,6 @@
 				CB4697C5ECF0CF111738192C /* ItemRow.swift */,
 				26107DBFCFD49DAF88FF33A4 /* ItemThumbnailView.swift */,
 				742B7FFFF3B205BD16630F01 /* Library.swift */,
-				1C8D52584524776A35E5B677 /* QuickCaptureView.swift */,
 				B817986D43904EDD1B78216E /* RootView.swift */,
 				136A1C65FF14CE46C62AA316 /* SpotlightIndexer.swift */,
 				6C851AE2661F78E38BCEE9AF /* StickyIntents.swift */,
@@ -393,7 +390,6 @@
 				8995C16594CA28B5BF942E73 /* ItemThumbnailView.swift in Sources */,
 				F2AB0315D5AA775C550E9DF3 /* Library.swift in Sources */,
 				AB9CB9D79A41009DC9560340 /* QuickCaptureControl.swift in Sources */,
-				24C110A0985F014CF321934A /* QuickCaptureView.swift in Sources */,
 				5058ED35E4F2A131224F1502 /* RootView.swift in Sources */,
 				C0B38764A97FC80C366B1A02 /* SpotlightIndexer.swift in Sources */,
 				DC606D132D0661D4AA290626 /* StickyIntents.swift in Sources */,

@@ -33,7 +33,7 @@ PasteboardWriter                                  replays every item and type in
                                                   handed out as fresh clones from an outbox
 ```
 
-The diagram shows the Mac path. On iOS the same `CapturedClip` comes from `ItemProviderCapture` (share sheet, drop, Paste button) and output goes through the system share sheet, Quick Look, copy and paste, not `PasteboardWriter`.
+The diagram shows the Mac path. On iOS the same `CapturedClip` comes from `ItemProviderCapture` (share sheet, drop, paste) and output goes through the system share sheet, Quick Look, copy and paste, not `PasteboardWriter`.
 
 * **`Item`** (`StickyCore/Model/Item.swift`)
   * `kind` decides how the item is drawn.
@@ -82,13 +82,12 @@ The Mac library lives in `~/Library/Application Support/Sticky Things/`. The iOS
 
 | Piece | Job |
 |---|---|
-| `Library` | Wraps the shared `ItemStore` and `CaptureService`, owns search/filter state, and forwards store changes to SwiftUI. |
-| `RootView`, `ItemRow`, `ItemDetailView` | Native list, context menus, swipe actions, search, item detail, system share sheet and Quick Look. |
-| `QuickCaptureView` | The composer opened by the Action Button, Control Center, Home Screen quick action or the app's + button. Uses the system Paste button, Photos picker and Files importer. |
+| `Library` | Wraps the shared `ItemStore` and `CaptureService`, owns search/filter state, and forwards store changes to SwiftUI. The store opens after the first view frame so the composer appears immediately. |
+| `RootView`, `ItemRow`, `ItemDetailView` | Native list, persistent ChatGPT-style composer, context menus, swipe actions, search, item detail, system share sheet and Quick Look. |
 | `StickyThingsShare` extension | Receives text, URLs, images and files from other apps. `ItemProviderCapture` normalizes providers into a `CapturedClip`; the extension saves it into the shared App Group library. |
 | `StickyThingsWidgets` | A `ControlWidget` for Control Center, the Lock Screen and the Action Button. It runs `OpenStickyThingIntent`, an `OpenIntent` shared with the app, so the system launches Sticky Things without a URL confirmation. |
 | `StickyThingsWidget` | A separate WidgetKit extension for the Home Screen and Lock Screen accessories. It reads pinned and recent items from the App Group, downsamples image thumbnails, shows count and relative time, and links each row to `stickythings://item/<uuid>`. |
-| `QuickCaptureFlag` | The small App Group flag the control writes and the app consumes when it becomes active. |
+| `QuickCaptureFlag` | The small App Group flag the control writes and the app consumes when it becomes active; it focuses the composer. |
 | `StickyIntents` | App Shortcuts and Siri actions: New Sticky Thing and Save to Sticky Things. |
 | `SpotlightIndexer` | Indexes item titles, captions and text in the private on-device Spotlight index; concealed items are never indexed. |
 
@@ -103,10 +102,11 @@ The Mac library lives in `~/Library/Application Support/Sticky Things/`. The iOS
 * **The corner has two drop speeds.** A quick drop on it saves without opening anything. Holding the drag there for the configured delay (with a short shake and a configurable catch area) opens the panel so the thing can be dropped into the stack, with its caption editor and the rest of the panel one step away. Opening this way does not activate the app or take the keyboard away from the drag's source.
 * **Captions are not capture content.** `Item.caption` is stored next to the lossless snapshot, not in it, so adding words to an image or PDF never changes what that item gives back when copied. Captions are searchable and editable on the card with the same inline editor as notes.
 * **iOS is designed for iOS, not shrunk from the Mac.** The Mac's floating panel, hot corner and pointer grid have no place on a phone. The iOS app uses a native list, search, sheets, context menus, swipe actions, the system share sheet, Quick Look, Paste, Photos and Files pickers, and the system entry points people already know.
+* **The composer paints before the library opens.** SwiftUI builds the shell, list placeholder and bottom composer first; `Library.load` opens SQLite after that frame, then defers garbage collection, the old-note import and Spotlight indexing by a beat. Along with a launch-screen color asset, this keeps the path from the Action Button to a blinking cursor short and avoids blocking the first paint on disk work.
 * **One library, several processes.** The iOS app, Share extension and Control widget are separate sandboxes. App Group storage plus `ItemProviderCapture` keep them on one library and one lossless item format. The control uses an `OpenIntent` with a shared App Group flag, not a custom URL, so the system launches the app directly instead of asking "Open in Sticky Things?".
 * **Spotlight is private and selective.** iOS indexes item titles, captions and text in the on-device Spotlight index. Concealed password-manager copies are never indexed. The index is not synced anywhere.
 * **The Home Screen widget is a second extension, not part of the control.** `ControlWidget` is not a `Widget`, so the Control Center control and the Home Screen widget live in separate extensions with separate bundle ids. Both read the App Group and both reload when the app writes. The widget loads at most six items and downsamples image blobs so the timeline stays cheap.
-* **No background pasteboard reads on either platform.** macOS goes through Edit ▸ Paste, and iOS uses the system `PasteButton`, which grants paste access only in response to the person tapping it.
+* **No background pasteboard reads on either platform.** macOS goes through Edit ▸ Paste; iOS pastes only when someone uses the system edit menu in the composer or a text field.
 * **Nothing is hover-only.** A clicked card is selected (or being edited), and a selected card keeps its buttons. Every action is also in the right-click menu, a keyboard shortcut and a VoiceOver action.
 * **⌘V goes through the main menu's Edit ▸ Paste.** That is how macOS tells a user paste apart from a background read (pasteboard privacy, macOS 15.4+). The app never reads the clipboard on its own.
 * **Focus is deterministic.** When a window becomes key, AppKit focuses the first text field, which would be search. The controller explicitly focuses the composer, and the self-test checks it.

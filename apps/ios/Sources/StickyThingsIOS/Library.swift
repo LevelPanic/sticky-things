@@ -11,9 +11,10 @@ import WidgetKit
 /// The iOS library: one local SQLite store, the same schema and item model as the Mac app.
 @MainActor
 final class Library: ObservableObject {
-    let store: ItemStore
-    let capture: CaptureService
+    private(set) var store: ItemStore?
+    private(set) var capture: CaptureService?
 
+    @Published private(set) var isReady = false
     @Published var search = ""
     @Published var filter: ItemFilter = .all
     @Published private(set) var lastMessage: String?
@@ -21,23 +22,46 @@ final class Library: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var toastWork: DispatchWorkItem?
 
-    init() {
-        do {
-            store = try ItemStore(paths: StickyAppGroup.paths)
-        } catch {
-            store = try! ItemStore(paths: .temporary(), inMemory: true)
-        }
-        capture = CaptureService(store: store)
-        store.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &cancellables)
+    init() {}
+
+    /// Open SQLite and start showing items. Called from the first view task so the composer is
+    /// already on screen; the store load happens after the first frame, not before it.
+    func load() async {
+        guard ensureLoaded() else { return }
+        // Maintenance is not launch-critical. Let the first list render first.
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        guard let store else { return }
         LegacyImporter.importIfNeeded(into: store)
         store.collectGarbage()
         SpotlightIndexer.shared.reindex(store.items, store: store)
         #if DEBUG
         DemoContent.seedIfRequested(in: self)
         #endif
+    }
+
+    /// A synchronous escape hatch for a very fast first send before `load()` runs.
+    @discardableResult
+    func ensureLoaded() -> Bool {
+        if store != nil { return true }
+        do {
+            let real = try ItemStore(paths: StickyAppGroup.paths)
+            install(real)
+        } catch {
+            flash("Could not open the library")
+            let fallback = try! ItemStore(paths: .temporary(), inMemory: true)
+            install(fallback)
+        }
+        return true
+    }
+
+    private func install(_ store: ItemStore) {
+        self.store = store
+        capture = CaptureService(store: store)
+        store.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        isReady = true
     }
 
     var isFiltering: Bool {
@@ -48,8 +72,16 @@ final class Library: ObservableObject {
         !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    var allItems: [Item] {
+        store?.items ?? []
+    }
+
     var items: [Item] {
-        store.search(search, filter: filter)
+        store?.search(search, filter: filter) ?? []
+    }
+
+    func item(_ id: UUID) -> Item? {
+        store?.item(id)
     }
 
     var pinned: [Item] {
@@ -65,6 +97,7 @@ final class Library: ObservableObject {
 
     @discardableResult
     func addNote(_ text: String) -> Bool {
+        guard ensureLoaded(), let capture else { return false }
         guard let outcome = capture.saveNote(text) else {
             flash("Write something first")
             return false
@@ -85,6 +118,7 @@ final class Library: ObservableObject {
     }
 
     func save(_ clip: CapturedClip) {
+        guard ensureLoaded(), let capture else { return }
         do {
             _ = handle(try capture.save(clip, source: nil))
         } catch {
@@ -97,7 +131,7 @@ final class Library: ObservableObject {
         switch outcome {
         case .saved(let items):
             flash(items.count > 1 ? "Saved \(items.count) items" : "Saved")
-            SpotlightIndexer.shared.reindex(store.items, store: store)
+            if let store { SpotlightIndexer.shared.reindex(store.items, store: store) }
             WidgetCenter.shared.reloadAllTimelines()
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             return true
@@ -112,6 +146,7 @@ final class Library: ObservableObject {
     // MARK: Actions
 
     func copy(_ item: Item) {
+        guard ensureLoaded(), let store else { return }
         let pasteboard = UIPasteboard.general
         switch item.kind {
         case .text, .richText, .other, .color:
@@ -145,6 +180,7 @@ final class Library: ObservableObject {
     }
 
     func delete(_ item: Item) {
+        guard let store else { return }
         store.delete(item.id)
         SpotlightIndexer.shared.remove(item.id)
         WidgetCenter.shared.reloadAllTimelines()
@@ -152,6 +188,7 @@ final class Library: ObservableObject {
     }
 
     func togglePin(_ item: Item) {
+        guard let store else { return }
         store.togglePin(item.id)
         SpotlightIndexer.shared.reindex(store.items, store: store)
         WidgetCenter.shared.reloadAllTimelines()
@@ -159,6 +196,7 @@ final class Library: ObservableObject {
     }
 
     func setCaption(_ item: Item, to text: String) {
+        guard let store else { return }
         store.setCaption(item.id, to: text)
         SpotlightIndexer.shared.reindex(store.items, store: store)
         WidgetCenter.shared.reloadAllTimelines()
@@ -167,7 +205,7 @@ final class Library: ObservableObject {
 
     func updateText(_ item: Item, to text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard let store, !trimmed.isEmpty else { return }
         store.setText(item.id, to: text)
         SpotlightIndexer.shared.reindex(store.items, store: store)
         WidgetCenter.shared.reloadAllTimelines()
@@ -175,7 +213,8 @@ final class Library: ObservableObject {
     }
 
     func fileURL(for item: Item) -> URL? {
-        item.files.first.flatMap(store.files.url(for:))
+        guard let store else { return nil }
+        return item.files.first.flatMap(store.files.url(for:))
     }
 
     /// A real file for Quick Look, ShareLink and the system share sheet. Images and PDFs with
@@ -206,7 +245,7 @@ final class Library: ObservableObject {
             if let (_, data) = firstData(in: item, types: UTI.images), let image = UIImage(data: data) { return [image] }
             return []
         case .pdf, .file, .folder, .files:
-            let urls = item.files.compactMap { store.files.url(for: $0) }
+            let urls = item.files.compactMap { store?.files.url(for: $0) }
             if !urls.isEmpty { return urls }
             return previewURL(for: item).map { [$0] } ?? []
         }
@@ -235,7 +274,7 @@ final class Library: ObservableObject {
     // MARK: Thumbnails
 
     func thumbnail(for item: Item) async -> UIImage? {
-        if let file = item.files.first, let url = store.files.url(for: file) {
+        if let file = item.files.first, let url = store?.files.url(for: file) {
             if item.kind == .pdf || item.kind == .image {
                 if let image = UIImage(contentsOfFile: url.path) { return image }
                 return await quickLookThumbnail(url)
@@ -252,6 +291,7 @@ final class Library: ObservableObject {
     }
 
     private func firstData(in item: Item, types: [String]) -> (String, Data)? {
+        guard let store else { return nil }
         for snap in item.snapshot {
             for type in types {
                 if let rep = snap.representation(type), let data = store.blobs.data(rep.blob) {

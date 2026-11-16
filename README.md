@@ -24,9 +24,9 @@ The iPhone app is designed around the places iOS already gives you for a five-se
 |---|---|---|
 | <img src="docs/panel-light.png" width="250" alt="Light Mac panel with notes, links and an image caption"> | <img src="docs/panel-dark.png" width="250" alt="Dark Mac panel with the same stack"> | <img src="docs/ios-list.png" width="210" alt="iPhone library with notes, links and an image"> |
 
-| iPhone, quick capture | iPhone, item detail | iPhone, widget |
+| iPhone, composer | iPhone, item detail | iPhone, widget |
 |---|---|---|
-| <img src="docs/ios-capture.png" width="210" alt="Quick capture sheet on iPhone"> | <img src="docs/ios-detail.png" width="210" alt="Item detail on iPhone"> | <img src="docs/ios-widget.png" width="210" alt="Sticky Things Home Screen widget on iPhone"> |
+| <img src="docs/ios-capture.png" width="210" alt="The persistent composer bar with the keyboard up on iPhone"> | <img src="docs/ios-detail.png" width="210" alt="Item detail on iPhone"> | <img src="docs/ios-widget.png" width="210" alt="Sticky Things Home Screen widget on iPhone"> |
 
 | macOS, captions | macOS, corner behavior | macOS, empty |
 |---|---|---|
@@ -39,7 +39,7 @@ The iPhone app is designed around the places iOS already gives you for a five-se
 | Platform | Status | Built with |
 |---|---|---|
 | macOS | Working build, used daily | Swift, SwiftUI, AppKit |
-| iOS | New app, Action Button and share sheet integrated | SwiftUI, App Intents, WidgetKit |
+| iOS | New app, Action Button, share sheet and Home Screen widget | SwiftUI, App Intents, WidgetKit |
 | Windows | Planned | Native shell + shared storage format |
 | Android | Planned | Native shell + shared storage format |
 
@@ -47,7 +47,8 @@ The same `Item` model, SQLite schema, blob store and file library back both Appl
 
 ## What it does
 
-- **Throw anything in.** Press ⌘V on the Mac, tap Paste on iPhone, or drag in text, rich text, links, screenshots, images, PDFs, files, folders, Photos, Mail attachments, or app data like Figma layers. Everything is captured losslessly.
+- **Throw anything in.** Press ⌘V on the Mac, paste into the iPhone composer, or drag in text, rich text, links, screenshots, images, PDFs, files, folders, Photos, Mail attachments, or app data like Figma layers. Everything is captured losslessly.
+- **A persistent composer.** The iPhone app opens with a ChatGPT-style input bar at the bottom, not a plus button and a sheet. Tap it, type or paste, and hit send. The Action Button and Control Center put the keyboard straight into it.
 - **Quick capture from anywhere on iPhone.** Add the **New Sticky Thing** control to the Action Button, Control Center, or Lock Screen. A single press opens the composer with the keyboard up.
 - **Share from any app on iPhone.** The Share extension saves links, text, photos, PDFs and files straight into the same library.
 - **Add your own words to anything.** Images, PDFs, files and folders can carry a searchable, undoable caption. On Mac: the speech-bubble button, ⌘⇧E, or the right-click menu. On iPhone: the item's context menu or detail screen.
@@ -55,7 +56,7 @@ The same `Item` model, SQLite schema, blob store and file library back both Appl
 - **Get it back in one click.** Click a link, image or file to copy it. On iPhone the system share sheet and Quick Look are one tap away.
 - **Throw it at the corner.** On Mac, drop something on the corner to save it without opening anything. Hold a drag there, watch the note shake, and the panel opens after a short delay.
 - **Find it again.** Search, filters, pinned items, and Spotlight indexing on iPhone.
-- **Native system surfaces.** Status item, hot corner and global shortcut on Mac; Action Button, Control Center, Lock Screen, Home Screen widget, Home Screen quick action, share sheet, Siri, Shortcuts, Spotlight, system Paste, Quick Look and iPad drag and drop on iPhone.
+- **Native system surfaces.** Status item, hot corner and global shortcut on Mac; Action Button, Control Center, Lock Screen, Home Screen widget, Home Screen quick action, share sheet, Siri, Shortcuts, Spotlight, paste, Quick Look and iPad drag and drop on iPhone.
 - **Stay out of the way.** Local-first, no account, no analytics.
 
 ## Install

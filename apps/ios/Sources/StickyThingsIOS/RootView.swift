@@ -1,15 +1,23 @@
 import CoreSpotlight
+import PhotosUI
 import QuickLook
 import StickyCore
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct RootView: View {
     @StateObject private var library = Library()
     @ObservedObject private var router = QuickCaptureRouter.shared
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var showingCapture = false
+    @AppStorage("iosComposerDraft") private var draft = ""
+    @FocusState private var composerFocused: Bool
+    @State private var photoItem: PhotosPickerItem?
+    @State private var showPhotoPicker = false
+    @State private var showFiles = false
+    @State private var savingAttachment = false
+
     @State private var captionItem: Item?
     @State private var selectedItem: Item?
     @State private var previewURL: URL?
@@ -19,31 +27,24 @@ struct RootView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if library.store.items.isEmpty {
+                if !library.isReady {
+                    loadingState
+                } else if library.allItems.isEmpty {
                     emptyState
                 } else {
                     content
                 }
             }
             .background(IOSTheme.page)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                composer
+            }
             .navigationTitle("Sticky Things")
             .searchable(text: $library.search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search items")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingCapture = true } label: {
-                        Image(systemName: "plus")
-                            .font(.body.weight(.semibold))
-                    }
-                    .keyboardShortcut("n", modifiers: .command)
-                    .accessibilityLabel("New Sticky Thing")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
                     filterMenu
                 }
-            }
-            .sheet(isPresented: $showingCapture) {
-                QuickCaptureView(library: library)
-                    .presentationDetents([.large])
             }
             .sheet(item: $selectedItem) { item in
                 ItemDetailView(item: item, library: library)
@@ -56,6 +57,14 @@ struct RootView: View {
             .sheet(isPresented: $showingShare) {
                 ActivityView(items: shareItems)
                     .presentationDetents([.medium, .large])
+            }
+            .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .images)
+            .fileImporter(isPresented: $showFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+                importFiles(result)
+            }
+            .onChange(of: photoItem) { _, selected in
+                guard let selected else { return }
+                loadPhoto(selected)
             }
             .quickLookPreview($previewURL)
             .overlay(alignment: .bottom) {
@@ -75,41 +84,56 @@ struct RootView: View {
             }
             .onContinueUserActivity(CSSearchableItemActionType) { activity in
                 if let id = SpotlightIndexer.itemID(from: activity) {
-                    selectedItem = library.store.item(id)
+                    selectedItem = library.item(id)
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .quickCapture)) { _ in
                 router.request()
             }
             .onChange(of: router.token) { _, _ in
-                if router.consume() { showingCapture = true }
+                if router.consume() { focusComposer() }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active, router.consume() { showingCapture = true }
+                if phase == .active, router.consume() { focusComposer() }
             }
             .onAppear {
                 if router.consume() || CommandLine.arguments.contains("--composer") {
-                    showingCapture = true
-                }
-                if CommandLine.arguments.contains("--detail"),
-                   let item = library.store.items.first(where: { $0.kind == .image }) ?? library.store.items.first {
-                    selectedItem = item
+                    focusComposer()
                 }
             }
             .task {
+                await library.load()
+                if CommandLine.arguments.contains("--detail"),
+                   let item = library.allItems.first(where: { $0.kind == .image }) ?? library.allItems.first {
+                    selectedItem = item
+                }
                 // A control can open the app before the intent's App Group flag is visible.
                 for _ in 0..<4 {
-                    try? await Task.sleep(nanoseconds: 400_000_000)
                     if router.consume() {
-                        showingCapture = true
+                        focusComposer()
                         break
                     }
+                    try? await Task.sleep(nanoseconds: 400_000_000)
                 }
             }
         }
     }
 
+    private func focusComposer() {
+        composerFocused = true
+    }
+
     // MARK: Content
+
+    private var loadingState: some View {
+        VStack(spacing: 10) {
+            ProgressView()
+            Text("Opening your library…")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
     private var content: some View {
         List {
@@ -143,6 +167,7 @@ struct RootView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private func row(_ item: Item) -> some View {
@@ -170,6 +195,101 @@ struct RootView: View {
         previewURL = library.previewURL(for: item)
     }
 
+    // MARK: Composer
+
+    private var canSend: Bool {
+        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !savingAttachment
+    }
+
+    private var composer: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            Menu {
+                Button { showPhotoPicker = true } label: {
+                    Label("Photo", systemImage: "photo")
+                }
+                Button { showFiles = true } label: {
+                    Label("File", systemImage: "folder")
+                }
+            } label: {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 17, weight: .medium))
+                    .frame(width: 32, height: 32)
+                    .contentShape(Circle())
+            }
+            .menuIndicator(.hidden)
+            .accessibilityLabel("Add a photo or file")
+
+            TextField("Write a note…", text: $draft, axis: .vertical)
+                .focused($composerFocused)
+                .lineLimit(1...5)
+                .font(.body)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(IOSTheme.card)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(.quaternary)
+                )
+
+            Button(action: send) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(canSend ? .white : .secondary)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        Circle().fill(canSend ? Color.accentColor : Color(uiColor: .tertiarySystemFill))
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSend)
+            .accessibilityLabel("Save Note")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity)
+        .background(.bar)
+    }
+
+    private func send() {
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        draft = ""
+        composerFocused = true
+        _ = library.addNote(text)
+    }
+
+    // MARK: Attachments
+
+    private func loadPhoto(_ item: PhotosPickerItem) {
+        savingAttachment = true
+        Task {
+            defer { savingAttachment = false }
+            guard let data = try? await item.loadTransferable(type: Data.self) else {
+                library.flash("Could not read that photo")
+                return
+            }
+            let type = item.supportedContentTypes.first?.identifier ?? UTType.image.identifier
+            library.saveImage(data, type: type)
+            composerFocused = true
+            photoItem = nil
+        }
+    }
+
+    private func importFiles(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            let accessed = urls.filter { $0.startAccessingSecurityScopedResource() }
+            defer { accessed.forEach { $0.stopAccessingSecurityScopedResource() } }
+            library.saveFiles(urls)
+        case .failure(let error):
+            library.flash(error.localizedDescription)
+        }
+    }
+
     // MARK: Links
 
     private func handle(_ url: URL) {
@@ -179,7 +299,7 @@ struct RootView: View {
             router.request()
         case "item":
             if let id = UUID(uuidString: url.lastPathComponent) {
-                selectedItem = library.store.item(id)
+                selectedItem = library.item(id)
             }
         default:
             break
@@ -225,22 +345,13 @@ struct RootView: View {
                 VStack(spacing: 10) {
                     Text("Nothing saved yet")
                         .font(.title2.weight(.semibold))
-                    Text("Save a thought, a link, a screenshot or a file. It stays on this iPhone, in the same library format as the Mac app.")
+                    Text("Write a note below, or save a link, photo or file. It stays on this iPhone, in the same library format as the Mac app.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 16)
-
-                Button {
-                    showingCapture = true
-                } label: {
-                    Label("New Sticky Thing", systemImage: "plus")
-                        .frame(maxWidth: 260)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
 
                 VStack(alignment: .leading, spacing: 12) {
                     tip("button.programmable", "Assign Sticky Things to the Action Button in Settings ▸ Action Button")
@@ -252,7 +363,7 @@ struct RootView: View {
                 .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(IOSTheme.card))
                 .padding(.horizontal, 20)
             }
-            .padding(.bottom, 30)
+            .padding(.bottom, 20)
         }
     }
 
@@ -274,7 +385,7 @@ struct RootView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(Capsule().fill(Color.black.opacity(0.78)))
-            .padding(.bottom, 16)
+            .padding(.bottom, 76)
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .animation(.easeOut(duration: 0.2), value: library.lastMessage)
     }

@@ -5,7 +5,7 @@ A native iOS companion to the Mac app. The idea is not to shrink the Mac panel o
 <p align="center">
   <img src="../../docs/ios-list.png" width="200" alt="iPhone library">
   <img src="../../docs/ios-empty.png" width="200" alt="iPhone empty state">
-  <img src="../../docs/ios-capture.png" width="200" alt="iPhone quick capture">
+  <img src="../../docs/ios-capture.png" width="200" alt="iPhone composer bar">
   <img src="../../docs/ios-detail.png" width="200" alt="iPhone item detail">
   <img src="../../docs/ios-widget.png" width="200" alt="Home Screen widget">
 </p>
@@ -13,14 +13,14 @@ A native iOS companion to the Mac app. The idea is not to shrink the Mac panel o
 
 ## What is here
 
-- **Quick capture:** a full-screen composer with a text editor, system paste button, Photos picker and Files importer.
+- **Persistent composer:** a ChatGPT-style input bar at the bottom of the library, always ready for a note, link, photo or file. The Action Button and Control Center focus it with the keyboard up; there is no plus button and no intermediate sheet.
 - **Action Button + Control Center:** the `New Sticky Thing` control opens the app straight into the composer. Add it from Settings > Action Button > Controls, or Control Center > + > Add a Control > Sticky Things.
 - **Lock Screen:** the same control can be placed in the Lock Screen controls.
 - **Home Screen widget:** pinned and recent items in small, medium and large sizes, plus Lock Screen accessory variants. Rows deep-link to the item; the large widget has a New Sticky Thing button.
 - **Share extension:** save text, links, photos, PDFs and files from other apps without opening Sticky Things.
 - **App Shortcuts:** "New sticky thing in Sticky Things" and "Save to Sticky Things" work with Siri and Shortcuts.
 - **Spotlight:** saved items are indexed on device. Tapping a result opens the item detail. Concealed copies are never indexed.
-- **Native gestures:** system Paste button, context menus, swipe actions, share sheet, Quick Look on iPad, and drag and drop into the list.
+- **Native gestures:** text paste, context menus, swipe actions, share sheet, Quick Look on iPad, and drag and drop into the list.
 - **Same library format:** the iOS app and its Share extension use the same SQLite schema, blob store and item JSON as the Mac app.
 
 ## Build

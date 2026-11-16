@@ -15,7 +15,7 @@ struct ItemDetailView: View {
     @State private var showingDelete = false
     @State private var previewURL: URL?
 
-    private var current: Item { library.store.item(item.id) ?? item }
+    private var current: Item { library.item(item.id) ?? item }
 
     var body: some View {
         NavigationStack {

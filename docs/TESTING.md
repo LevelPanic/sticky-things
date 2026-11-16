@@ -122,7 +122,7 @@ xcrun simctl launch booted app.stickythings.StickyThings --composer
 xcrun simctl launch booted app.stickythings.StickyThings --detail
 ```
 
-`--demo` seeds a throwaway library, `--composer` opens the quick capture sheet, and `--detail` opens an item's detail screen. The current screenshots in `docs/ios-*.png` come from this path.
+`--demo` seeds a throwaway library, `--composer` focuses the persistent composer, and `--detail` opens an item's detail screen. The current screenshots in `docs/ios-*.png` come from this path.
 
 **Manual device pass.** The system parts do not exist in the simulator:
 
@@ -132,9 +132,9 @@ xcrun simctl launch booted app.stickythings.StickyThings --detail
 * **Share sheet:** share a link from Safari, text from Notes, a photo from Photos, a PDF from Files and a large file from another app. Each should save into the same library and appear in the app.
 * **Siri and Shortcuts:** "New sticky thing in Sticky Things" opens the composer. "Save to Sticky Things" with text saves while the app stays closed.
 * **Spotlight:** save a note, search for it from the Home Screen, tap the result. The item detail should open. A concealed copy must not appear.
-* **Paste:** copy text/image on the Mac or iPhone and tap the system Paste button in the composer.
+* **Paste:** copy text or an image on the Mac or iPhone and paste into the composer with the system edit menu. Use the paperclip for Photos and Files.
 * **Quick Look and Share:** open an item detail, preview an image/PDF, and share a file through the system sheet.
-* **iPad:** drag a link from Safari, a photo from Photos and a file from Files into the list; drag a row out to another app; use ⌘N to open the composer.
+* **iPad:** drag a link from Safari, a photo from Photos and a file from Files into the list; drag a row out to another app; tap the composer to type.
 * **App Group:** install the app and share extension with the `group.app.stickythings` capability, save from the share sheet, and confirm the item is in the app. Without the capability the extension falls back to its own container.
 * **Dynamic Type and dark mode:** raise the text size and switch appearance; controls and cards should reflow without clipping.
 
