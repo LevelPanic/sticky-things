@@ -57,6 +57,14 @@ These are research notes, checked against macOS 26.1 where marked, behind the de
 
 **We** use an AppKit drop view as the panel's content (the SwiftUI hosting view is its subview) and no SwiftUI drop modifiers. Promises are received first; everything else is captured synchronously.
 
+## Dragging into the corner
+
+* **No global drag notification.** AppKit tells a view when a drag enters *it*, but not that a drag started in another app. There is no public `NSDraggingSession` to observe from outside the source app.
+* **What is readable.** `NSEvent.pressedMouseButtons` and `NSEvent.mouseLocation` are process-wide, and a global monitor for `.leftMouseDown` does not need Accessibility permission (only key events do).
+* **We** notice the button going down, then sample it and the pointer while it is held. Moving a few points counts as a drag; a click does not. The corner only grows to its catch area while that says a drag is in progress, so at rest it stays the same tiny target. `DragSessionWatcher` owns this; `CornerWindow` decides what to do with it.
+* **A new window under a drag.** A drag's destination is the window under the pointer. When the panel appears while the button is still held, the pointer may need to move before AppKit sends the new window `draggingEntered`. The panel opens adjacent to the corner and the corner still accepts the drop, so either path saves the item.
+* **Opening for a drag stays passive.** `showForDrop` orders the panel front and animates it in without `makeKey` and without activating the app, so the drag's source keeps its keyboard and the drag session is not disturbed.
+
 ## Giving things back
 
 * **Item structure.** Replay the item structure and type order exactly. The system regenerates legacy aliases itself.
@@ -81,6 +89,7 @@ These are research notes, checked against macOS 26.1 where marked, behind the de
   * `textDidEndEditing` only arrives after the text changed. Clicking away from an untouched editor sends nothing, so the editor ends on `resignFirstResponder` instead.
   * AppKit doesn't resign a first responder that is removed from its window, and SwiftUI doesn't reliably call `dismantleNSView` (it keeps and reuses platform views). The editor also ends on `viewWillMove(toWindow: nil)`.
   * SwiftUI may hand back the *same* `NSView` for the next edit. Each edit gets a fresh identity (`.id(editSession)`) so it starts with a new editor.
+  * **A growing card in a lazy list can make SwiftUI build two platform views for one edit.** They both attach, then one resigns first and can rip the edit away from the other. `InlineEditHandle` tracks every live view for one edit token: a duplicate leaving does not finish the live edit, Save still reaches the survivor, and an editor from a different edit still saves when it finishes late. A measurement copy with zero width never attaches or takes focus, and its height calculation is ignored.
   * `makeFirstResponder` right after `makeNSView` often runs before the view is in a window. The editor takes focus in `viewDidMoveToWindow`.
 * **Clicks that don't move focus.** Clicking a field that already has the keyboard changes nothing AppKit reports (no `becomeFirstResponder`), and clicking a SwiftUI view that isn't focusable leaves the first responder alone. So "where you're working" can't be read from focus: text fields report clicks from `mouseDown`, and the panel's background takes a tap gesture that SwiftUI only fires when no card, button, chip or field took the click.
 * **Testing clicks.** AppKit views (our text fields) accept synthesized `NSEvent` clicks. Post the matching mouse-up first, so the text view's click-tracking loop ends. SwiftUI controls ignore synthesized clicks, so the self-test reaches them through accessibility, and the background tap only through the action it runs.

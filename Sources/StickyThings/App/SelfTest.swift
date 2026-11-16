@@ -103,6 +103,23 @@ enum SelfTest {
             AX.press(imageCard)
             await wait(0.3)
             check(clipboard.data(forType: .png) != nil && model.editingID == nil, "a click on an image copies it")
+            await wait(0.3)
+            if let captionButton = AX.find("caption-\(image.id.uuidString)") {
+                AX.press(captionButton)
+                await wait(0.5)
+                check(model.captionEditingID == image.id, "the Caption button starts editing")
+                if let editor = window.firstResponder as? EditorTextView {
+                    editor.insertText("Deposit receipt", replacementRange: NSRange(location: (editor.string as NSString).length, length: 0))
+                    editor.doCommand(by: #selector(NSResponder.insertNewline(_:)))
+                    await wait(0.4)
+                    check(store.item(image.id)?.caption == "Deposit receipt", "Return saves the caption")
+                    check(store.search("deposit receipt").contains { $0.id == image.id }, "captions are searchable")
+                } else {
+                    check(false, "the caption editor takes the keyboard")
+                }
+            } else {
+                check(false, "the Caption button is reachable")
+            }
         }
 
         // With clicks set to copy, one click copies the note and keeps it selected.
@@ -293,6 +310,32 @@ enum SelfTest {
         composer.doCommand(by: #selector(NSResponder.insertNewline(_:)))
         await wait(0.5)
         check(!controller.isShown, "Return copies and closes")
+
+        // Holding a drag in the corner arms the note, shakes, then opens the panel so the drag
+        // can be dropped into it. A quick drop still takes the direct save path.
+        let cornerWindow = CornerWindow(screen: screen, corner: .bottomRight, showPeek: true)
+        cornerWindow.dragToOpen = true
+        cornerWindow.dragOpenDelay = 0.25
+        cornerWindow.dragTriggerArea = CornerDragArea.large.size
+        var dragOpened = false
+        cornerWindow.onDragOpen = {
+            dragOpened = true
+            controller.showForDrop(.corner(screen, .bottomRight))
+        }
+        cornerWindow.dragSessionBegan()
+        check(cornerWindow.frame.width >= CornerDragArea.large.size,
+              "a drag grows the corner into its trigger area")
+        cornerWindow.dragEntered()
+        await wait(0.15)
+        check(cornerWindow.model.phase == .armed, "a held drag arms the corner")
+        check(!dragOpened, "the panel waits for the drag delay")
+        await wait(0.45)
+        check(dragOpened && controller.isShown, "a held drag opens the panel")
+        controller.hide()
+        await wait(0.3)
+        cornerWindow.dragSessionEnded()
+        await wait(0.3)
+        check(cornerWindow.frame.width == CornerWindow.idleSize, "the corner shrinks back after the drag")
 
         // From a top corner the composer sits under the header; same grid.
         controller.show(.corner(screen, .topRight))

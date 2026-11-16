@@ -3,8 +3,8 @@
 Six layers, from fastest to most realistic. None of them need Accessibility or Screen Recording permission, and none touch your real library or clipboard. The self-test and the layout audit open real windows: run them on an unlocked Mac and don't type or click while they run.
 
 ```bash
-make test        # 1–3: unit, design (contrast + lint), app logic
-make selftest    # 4: drives the real panel window (behavior + the grid)
+make test        # 1–3: 46 unit tests (core, design, app logic)
+make selftest    # 4: drives the real panel window (57 checks, behavior + the grid)
 make layout      # 5: every panel state, light and dark, checked against the grid, with captures
 make snapshots   # 6: renders every screen to build/snapshots
 ```
@@ -32,6 +32,7 @@ These cover everything about capture and storage, using private pasteboards (`NS
 * **Storage:**
   * persistence across launches
   * edit, delete, undo and search (case- and accent-insensitive)
+  * captions: saved, searchable, cleared, and old items without a caption still decode
   * retention keeps pinned items
   * garbage collection
   * one-time v1 import
@@ -41,6 +42,7 @@ These cover everything about capture and storage, using private pasteboards (`NS
 
 * **`ContrastTests`:** WCAG ratios for every token pair, in light and dark.
 * **`DesignLintTests`:** fails the build on design drift (see [DESIGN.md](DESIGN.md)).
+* **`InlineEditHandleTests`:** a late editor never unhooks the one that replaced it; two platform views for the same edit leave the survivor in charge; an editor from another edit is not treated as a duplicate.
 
 ## 3. App logic (`Tests/StickyThingsTests`)
 
@@ -53,6 +55,8 @@ These cover everything about capture and storage, using private pasteboards (`NS
 * the selection following where you work (composer, search, empty space, typing, every way an edit ends)
 * hover moving between cards (leaving one never clears the next)
 * inline edit + undo, and how each ending behaves (Save, Cancel, clicking elsewhere, the panel closing)
+* captions: start, save, cancel, remove, undo, searchable text, and the ⌘⇧E shortcut reaching media but not notes
+* drag settings: defaults, persistence, and the three trigger-area sizes
 * Return in the composer saves typed text even while a card is selected
 * editing a link keeps it a link
 * delete selecting a neighbor + undo
@@ -65,7 +69,7 @@ These cover everything about capture and storage, using private pasteboards (`NS
 * **How it works:** it opens the *real* panel and drives it through the app's own accessibility tree, as VoiceOver does. That works in-process with no permissions.
   * It presses buttons, performs each card's named actions and types into the real text views.
   * Synthesized mouse events don't reach SwiftUI controls, so accessibility is the dependable route. Every action being reachable this way also means it works for VoiceOver users.
-* **What it checks (49 checks):**
+* **What it checks (57 checks):**
   * a click edits a note by default without copying it, a click on an image copies it, and with clicks set to copy a click copies and selects
   * the outline follows where you're working: real clicks in the composer and search clear it, typing a note clears it, clicking the composer ends an edit and clears its outline, empty space saves an open edit and returns to the composer
   * the composer's toolbar line shows the ⇧↩ hint and Save
@@ -76,6 +80,8 @@ These cover everything about capture and storage, using private pasteboards (`NS
   * a click edits a note (default) or copies it (copy mode) and keeps the card selected
   * the Copy and Edit buttons work without hover
   * editing in place: Save and Cancel show, Return saves, Esc cancels, the Save button saves, clicking the composer ends the edit (typed or not) and the composer still saves, closing the panel keeps the edit
+  * a caption on an image: the Caption button starts editing, Return saves it, and it is searchable
+  * a drag grows the corner to its trigger area, arms it, waits for the delay, then opens the panel; the corner shrinks after the drag
   * Delete + Undo, Pin and the pinned chip
   * ↑ / Return
   * Quick Look with the panel staying open
@@ -85,9 +91,9 @@ These cover everything about capture and storage, using private pasteboards (`NS
 
 ## 5. Layout audit (`StickyThings --layout <folder>`, `make layout`)
 
-* **How it works:** it opens the real panel with sample data and walks it through every state, in dark and light: items, a selected card, typing two lines, searching, editing in place, opened from a top corner, and empty. Then it opens the real Settings window and visits every pane in both appearances (22 states in all).
+* **How it works:** it opens the real panel with sample data and walks it through every state, in dark and light: items, a selected card, typing two lines, searching, editing a note in place, editing a caption, opened from a top corner, and empty. Then it opens the real Settings window and visits every pane in both appearances (24 states in all).
   * For each state it writes a capture of the real window (glass included; apps can capture their own windows without permission) and a `.txt` with every element's frame.
-  * It checks each state against `LayoutRules`: the outer and content columns, the 36 pt search field with centered text, the two-line composer (text inset, toolbar line, hint on the column), trailing buttons 4 pt in, header buttons centered on the search field, 28 pt control rows, a 12 pt margin and 8 pt between blocks, list spacing, and the edit bar.
+  * It checks each state against `LayoutRules`: the outer and content columns, the 36 pt search field with centered text, the two-line composer (text inset, toolbar line, hint on the column), trailing buttons 4 pt in, header buttons centered on the search field, 28 pt control rows, a 12 pt margin and 8 pt between blocks, list spacing, the edit bar, and captions on the content column with their Save button on the card edge.
 * **Settings** is native, so its rules cover what the system can't: the corner preview centered in its pane, every sidebar row present, and the window title matching the pane.
 * **How it measures:** elements (buttons, text, cards) through the app's own accessibility tree. Layout boxes come from SwiftUI itself (`layoutProbe`), because a SwiftUI group reports the union of its children, and a short bottom-anchored scroll view reports an offset frame.
 * **It catches regressions:** planting the old mistakes back (composer text off-center, section headers off the column) fails the audit on exactly those rules.
@@ -95,7 +101,7 @@ These cover everything about capture and storage, using private pasteboards (`NS
 
 ## 6. Snapshots (`StickyThings --snapshot <folder>`)
 
-These render the panel (light and dark, full and empty), every onboarding step, Settings panes and the corner states. Sample data goes through the real capture code. Glass can't be rendered offscreen, so snapshots use a flat surface.
+These render the panel (light and dark, full and empty), every onboarding step, Settings panes and the corner states. Sample data goes through the real capture code and includes captions on the image and PDF. Glass can't be rendered offscreen, so snapshots use a flat surface.
 
 ## Manual pass (each release)
 
@@ -109,6 +115,10 @@ These render the panel (light and dark, full and empty), every onboarding step, 
 * Notes / Pages (rich text)
 * the screenshot thumbnail
 * a 1Password copy (should show blurred)
+
+**Drag to open.** With Settings ▸ Corner ▸ "Open the panel when I hold a drag at the corner" on, drag a file toward the corner: the catch area grows while the drag is held, the note shakes, and the panel opens after the delay without pulling focus from Finder. Drop inside the panel and the item lands at the top. Try each trigger area (Small, Medium, Large), a quick release on the corner (direct save), and Cancel (Esc) mid-drag.
+
+**Captions.** On an image, PDF, file, folder and multi-file card: add a caption with the speech-bubble button, ⌘⇧E and the right-click menu. Check Return saves, Esc cancels, clicking elsewhere saves, long text wraps and grows the editor, a saved caption appears under the item and in search, Remove Caption works, and ⌘Z restores it. Notes and links should have no caption button.
 
 **Pointer.** Hover reveals the buttons, and they stay while the pointer rests on them. Click a card, then empty space: the outline goes. Edit a note, click empty space: the edit is saved and the caret is back in the composer. The first click works even right after opening. Right-click shows the menu.
 

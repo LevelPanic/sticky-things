@@ -103,6 +103,54 @@ final class PanelModelTests: XCTestCase {
         XCTAssertEqual(store.item(item.id)?.text, "draft")
     }
 
+    func testCaptionEditingRemoveAndUndo() {
+        let image = Item(kind: .image, text: "", title: "Receipt.png")
+        store.insert(image)
+        XCTAssertTrue(model.supportsCaption(image))
+        XCTAssertFalse(model.supportsCaption(Item(kind: .text, text: "note")))
+
+        model.beginCaptionEditing(image)
+        XCTAssertEqual(model.captionEditingID, image.id)
+        XCTAssertEqual(model.selection, image.id)
+        model.finishCaptionEditing(image.id, text: "  Deposit for the flat  ", ending: .save)
+        XCTAssertNil(model.captionEditingID)
+        XCTAssertNil(model.selection, "finishing the caption clears the outline")
+        XCTAssertEqual(store.item(image.id)?.caption, "Deposit for the flat")
+        XCTAssertEqual(model.toast?.canUndo, true)
+
+        model.undo()
+        XCTAssertNil(store.item(image.id)?.caption, "Undo removes the new caption")
+
+        store.setCaption(image.id, to: "Keep me")
+        model.removeCaption(store.item(image.id)!)
+        XCTAssertNil(store.item(image.id)?.caption)
+        model.undo()
+        XCTAssertEqual(store.item(image.id)?.caption, "Keep me", "Undo brings a removed caption back")
+
+        model.beginCaptionEditing(store.item(image.id)!)
+        model.finishCaptionEditing(image.id, text: "discard me", ending: .cancel)
+        XCTAssertEqual(store.item(image.id)?.caption, "Keep me", "Cancel discards")
+        XCTAssertNil(model.captionEditingID)
+    }
+
+    func testCaptionShortcutOnlyForMedia() {
+        model.capture.saveNote("a note")
+        let note = store.items[0]
+        model.selection = note.id
+        let event = NSEvent.keyEvent(with: .keyDown, location: .zero,
+                                     modifierFlags: [.command, .shift], timestamp: 0, windowNumber: 0,
+                                     context: nil, characters: "E", charactersIgnoringModifiers: "e",
+                                     isARepeat: false, keyCode: 14)!
+        XCTAssertFalse(model.handleKeyEquivalent(event, textHasSelection: false), "notes don't get captions")
+        XCTAssertNil(model.captionEditingID)
+
+        let image = Item(kind: .image, text: "", title: "Shot.png")
+        store.insert(image)
+        model.selection = image.id
+        XCTAssertTrue(model.handleKeyEquivalent(event, textHasSelection: false))
+        XCTAssertEqual(model.captionEditingID, image.id)
+    }
+
     func testEditEndings() {
         model.capture.saveNote("draft")
         let item = store.items[0]
@@ -294,8 +342,34 @@ final class GeometryTests: XCTestCase {
         XCTAssertTrue(ScreenCorner.isHard(.bottomRight, of: right, among: [left, right]))
     }
 
+    func testDragTriggerAreasAreComfortableTargets() {
+        XCTAssertEqual(CornerDragArea.allCases.map(\.size), [44, 72, 120])
+        XCTAssertGreaterThanOrEqual(CornerDragArea.small.size, 44, "at least the HIG minimum target")
+        XCTAssertLessThan(CornerDragArea.small.size, CornerDragArea.medium.size)
+        XCTAssertLessThan(CornerDragArea.medium.size, CornerDragArea.large.size)
+    }
+
     func testDefaultShortcut() {
         XCTAssertEqual(KeyCombo.default.displayString, "⌃⌥N")
         XCTAssertTrue(KeyCombo.default.isValidGlobalShortcut)
+    }
+}
+
+@MainActor
+final class DragSettingsTests: XCTestCase {
+    func testDragToOpenDefaultsAndPersistence() {
+        let defaults = UserDefaults(suiteName: "DragSettingsTests-\(UUID().uuidString)")!
+        let settings = Settings(defaults: defaults)
+        XCTAssertTrue(settings.dragToOpen, "holding a drag opens the panel by default")
+        XCTAssertEqual(settings.dragOpenDelay, 0.6, accuracy: 0.001)
+        XCTAssertEqual(settings.dragTriggerArea, .medium)
+
+        settings.dragToOpen = false
+        settings.dragOpenDelay = 1.1
+        settings.dragTriggerArea = .large
+        let reopened = Settings(defaults: defaults)
+        XCTAssertFalse(reopened.dragToOpen)
+        XCTAssertEqual(reopened.dragOpenDelay, 1.1, accuracy: 0.001)
+        XCTAssertEqual(reopened.dragTriggerArea, .large)
     }
 }

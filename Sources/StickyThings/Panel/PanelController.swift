@@ -236,7 +236,17 @@ final class PanelController: NSObject, NSWindowDelegate {
         isShown ? hide(reason: "toggle") : show(anchor)
     }
 
+    /// Opening automatically because a drag is resting in the corner. Do not activate the app or
+    /// steal the keyboard from the app the drag started in; the drop itself is the interaction.
+    func showForDrop(_ anchor: PanelAnchor) {
+        show(anchor, activating: false)
+    }
+
     func show(_ anchor: PanelAnchor) {
+        show(anchor, activating: true)
+    }
+
+    private func show(_ anchor: PanelAnchor, activating: Bool) {
         hideWork?.cancel()
         let (frame, atBottom, scaleAnchor, travel) = layout(for: anchor)
         model.anchorAtBottom = atBottom
@@ -251,16 +261,17 @@ final class PanelController: NSObject, NSWindowDelegate {
             model.sourceApp = previousApp.map { SourceApp(bundleID: $0.bundleIdentifier, name: $0.localizedName) }
         }
         model.isPresented = true
-        model.prepareForOpen()
+        model.prepareForOpen(focusComposer: activating)
 
         // Slide a few points out of the corner while fading in (a crossfade with Reduce Motion).
         if !wasShown {
             panel.alphaValue = 0
             panel.setFrame(frame.offsetBy(dx: travel.width, dy: travel.height), display: false)
         }
-        // Like Spotlight: take the keyboard without making your current app inactive.
+        // Like Spotlight: take the keyboard without making your current app inactive. A panel
+        // opened for a drag stays passive so the drag keeps going to the app it started in.
         panel.orderFrontRegardless()
-        panel.makeKey()
+        if activating { panel.makeKey() }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Motion.reduceMotion ? 0.15 : Motion.panelInDuration
             context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
@@ -272,8 +283,10 @@ final class PanelController: NSObject, NSWindowDelegate {
                 guard let self, self.isShown else { return }
                 // macOS only lets a background app take the keyboard right after you interact with
                 // it (a click or the hotkey). Opened any other way (e.g. a URL): activate instead.
-                if !self.panel.isKeyWindow { self.activateForFocus() }
-                self.focusComposer()
+                if activating {
+                    if !self.panel.isKeyWindow { self.activateForFocus() }
+                    self.focusComposer()
+                }
                 self.panel.invalidateShadow()
                 DebugLog.write("shown key=\(self.panel.isKeyWindow) active=\(NSApp.isActive)")
             }

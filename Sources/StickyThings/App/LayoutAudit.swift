@@ -85,6 +85,14 @@ enum LayoutAudit {
                     editor.doCommand(by: #selector(NSResponder.cancelOperation(_:)))
                 }
             }
+
+            if let image = store.items.first(where: { $0.kind == .image }) {
+                model.beginCaptionEditing(image)
+                await record("caption", appearanceName)
+                if let editor = controller.panel.firstResponder as? EditorTextView {
+                    editor.doCommand(by: #selector(NSResponder.cancelOperation(_:)))
+                }
+            }
             controller.hide()
             await wait(0.4)
         }
@@ -245,6 +253,9 @@ enum LayoutRules {
         for (id, r) in matching("editor-") {
             expect(near(r.minX, column), "\(id.prefix(15)) starts at x \(f(r.minX)), not \(f(column))")
         }
+        for (id, r) in matching("caption-editor-") {
+            expect(near(r.minX, column), "\(id.prefix(23)) starts at x \(f(r.minX)), not \(f(column))")
+        }
 
         // 3. Fields: 36 pt on one line, text centered, trailing buttons 4 pt in on every side.
         let buttonInset = Metrics.fieldButtonInset
@@ -340,6 +351,12 @@ enum LayoutRules {
             let cardID = "card-" + id.dropFirst("save-".count)
             if let card = frames[cardID] {
                 expect(near(card.maxX - save.maxX, PanelLayout.cardPadding), "Save is \(f(card.maxX - save.maxX)) from the card edge, not \(f(PanelLayout.cardPadding))")
+            }
+        }
+        for (id, save) in matching("caption-save-") {
+            let cardID = "card-" + id.dropFirst("caption-save-".count)
+            if let card = frames[cardID] {
+                expect(near(card.maxX - save.maxX, PanelLayout.cardPadding), "Caption Save is \(f(card.maxX - save.maxX)) from the card edge, not \(f(PanelLayout.cardPadding))")
             }
         }
         return problems

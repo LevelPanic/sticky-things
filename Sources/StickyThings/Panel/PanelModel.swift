@@ -47,6 +47,10 @@ final class PanelModel: ObservableObject {
     let editHandle = InlineEditHandle()
     /// New for every edit, so SwiftUI builds a fresh editor instead of reusing a finished one.
     @Published private(set) var editSession = UUID()
+    /// A second inline edit for the text attached to an image, PDF or file.
+    @Published var captionEditingID: UUID?
+    let captionEditHandle = InlineEditHandle()
+    @Published private(set) var captionEditSession = UUID()
     @Published var composerFocus = 0
     @Published var searchFocus = 0
     @Published var composerHeight: CGFloat = 20
@@ -112,6 +116,7 @@ final class PanelModel: ObservableObject {
     func clickedBackground() {
         selection = nil
         if editHandle.isActive { editHandle.save() }
+        if captionEditHandle.isActive { captionEditHandle.save() }
     }
 
     // MARK: Derived
@@ -134,19 +139,20 @@ final class PanelModel: ObservableObject {
 
     // MARK: Opening
 
-    func prepareForOpen() {
+    func prepareForOpen(focusComposer: Bool = true) {
         selection = nil
         copiedID = nil
         isDropTargeted = false
         toast = nil
         conflictAction = settings.hideConflictBanner ? nil : MacHotCorners.conflictingAction(for: settings.corner)
-        composerFocus += 1
+        if focusComposer { composerFocus += 1 }
         openToken += 1
     }
 
     func didClose() {
         quickLook.close()
         if editingID != nil { editingID = nil }
+        if captionEditingID != nil { captionEditingID = nil }
         hoveredID = nil
     }
 
@@ -302,6 +308,8 @@ final class PanelModel: ObservableObject {
             editHandle.focus()
             return
         }
+        if captionEditHandle.isActive { captionEditHandle.save() }
+        if captionEditingID != nil { captionEditingID = nil }
         selection = item.id
         editSession = UUID()
         editingID = item.id
@@ -327,6 +335,50 @@ final class PanelModel: ObservableObject {
         showToast(before.kind == .link ? "Link saved" : "Note saved", symbol: "checkmark", canUndo: true)
     }
 
+    // MARK: Captions on media and documents
+
+    func supportsCaption(_ item: Item) -> Bool { item.supportsCaption }
+
+    /// Starts editing the text attached to an image, PDF or file. One edit is open at a time.
+    func beginCaptionEditing(_ item: Item) {
+        guard supportsCaption(item) else { return }
+        if captionEditingID == item.id {
+            captionEditHandle.focus()
+            return
+        }
+        if editHandle.isActive { editHandle.save() }
+        if editingID != nil { editingID = nil }
+        selection = item.id
+        captionEditSession = UUID()
+        captionEditingID = item.id
+    }
+
+    func finishCaptionEditing(_ id: UUID, text: String, ending: InlineTextEditor.Ending = .save) {
+        if captionEditingID == id {
+            captionEditingID = nil
+            if ending != .focusLost { composerFocus += 1 }
+        }
+        if selection == id { selection = nil }
+        guard ending != .cancel, let before = store.item(id) else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let caption = trimmed.isEmpty ? nil : trimmed
+        guard caption != before.caption else { return }
+        store.setCaption(id, to: caption)
+        undoAction = { [weak self] in
+            self?.store.update(id) { $0 = before }
+        }
+        showToast(caption == nil ? "Caption removed" : "Caption saved", symbol: caption == nil ? "text.bubble" : "checkmark", canUndo: true)
+    }
+
+    func removeCaption(_ item: Item) {
+        guard let before = store.item(item.id), before.caption != nil else { return }
+        store.setCaption(item.id, to: nil)
+        undoAction = { [weak self] in
+            self?.store.update(item.id) { $0 = before }
+        }
+        showToast("Caption removed", symbol: "text.bubble", canUndo: true)
+    }
+
     func togglePin(_ item: Item) {
         withAnimation(Motion.standard) { store.togglePin(item.id) }
         showToast(item.pinned ? "Unpinned" : "Pinned to top", symbol: item.pinned ? "pin.slash" : "pin")
@@ -345,6 +397,7 @@ final class PanelModel: ObservableObject {
             selection = remaining.isEmpty ? nil : remaining[min(index ?? 0, remaining.count - 1)].id
         }
         if editingID == item.id { editingID = nil }
+        if captionEditingID == item.id { captionEditingID = nil }
         undoAction = { [weak self] in withAnimation(Motion.standard) { self?.store.restore(removed) } }
         showToast(item.kind.isTextual ? "Note deleted" : "\(item.kind.label) deleted", symbol: "trash", canUndo: true)
     }
@@ -461,7 +514,11 @@ final class PanelModel: ObservableObject {
         let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
         guard let key = event.charactersIgnoringModifiers?.lowercased() else { return false }
         if flags == [.command, .option], key == "v" { pasteIntoComposer(); return true }
-        if flags.isEmpty, key == " ", editingID == nil, let item = selectedItem, !composerFocused || settings.draft.isEmpty {
+        if flags == [.command, .shift], key == "e" {
+            if let item = selectedItem, supportsCaption(item) { beginCaptionEditing(item); return true }
+            return false
+        }
+        if flags.isEmpty, key == " ", editingID == nil, captionEditingID == nil, let item = selectedItem, !composerFocused || settings.draft.isEmpty {
             quickLook(item)
             return true
         }

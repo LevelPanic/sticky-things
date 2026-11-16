@@ -120,7 +120,7 @@ struct OnboardingView: View {
             illustration(highlight: settings.corner, showPointer: !model.cornerTried)
             Text(model.cornerTried ? "That’s it" : "Now try it").font(TypeScale.display).foregroundStyle(Palette.textPrimary.color)
             Text(model.cornerTried
-                 ? "Whenever you need it, fling the pointer into the corner. Paste with ⌘V, type, or drop things on the corner itself."
+                 ? "Whenever you need it, fling the pointer into the corner. Paste with ⌘V, type, or drop things on the corner itself. Hold a drag at the corner and the panel opens so you can drop it into the stack."
                  : "Move your pointer all the way into the \(settings.corner.name.lowercased()) corner\(clickSuffix).")
                 .font(.system(size: 14)).foregroundStyle(Palette.textSecondary.color).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: Space.s) {

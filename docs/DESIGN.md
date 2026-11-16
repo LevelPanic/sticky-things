@@ -17,7 +17,7 @@ Everything lives in `Sources/StickyDesign`. Views never use raw values, and two 
 | Space | `Space` | A 4 pt grid: 2, 4, 8, 12, 16, 24, 32. Section headers get more space above than below. No one-off nudges (`Space.s - 2`): use a token or add one. |
 | Radius | `Radius` | Concentric: an inner radius equals the outer radius minus the padding. Field 18 (half the field height), panel 30 (field + the 12 pt margin, so fields sit concentric in the corners), card 14, buttons 6. |
 | Elevation | `Elevation` | One method per appearance. Light mode uses a soft shadow tinted with the ink color; dark mode uses a lighter fill plus a border. The panel's elevation is the system window shadow. |
-| Motion | `Motion` | Zero-bounce springs (`.smooth`) for state, ease-out for hover. Exits are about 75% of the entrance. With Reduce Motion, everything is a short crossfade and the panel doesn't travel. |
+| Motion | `Motion` | Zero-bounce springs (`.smooth`) for state, ease-out for hover. Exits are about 75% of the entrance. With Reduce Motion, everything is a short crossfade and the panel doesn't travel. The corner's held-drag shake is a short ease-in-out wobble, skipped with Reduce Motion. |
 | Size | `Metrics` | Icon buttons and control rows (filter pills, pinned chips) are 28 pt (the HIG default) and no target is under 24 pt (WCAG 2.5.8). Text fields are 36 pt on one line. |
 
 ## Panel grid
@@ -48,7 +48,7 @@ Every measurement in the panel comes from this grid. `LayoutRules` (in `App/Layo
 
 **Control rows** are 28 pt. Filter segments are 4 pt apart and every icon-only one is a 28 pt square. Pinned chips are 8 pt apart, because they're separate objects, not segments of one control.
 
-**Cards** pad 12 pt. Image cards frame the picture 8 pt in, and their caption steps back to the content column and the 12 pt bottom edge.
+**Cards** pad 12 pt. Image cards frame the picture 8 pt in, and their caption steps back to the content column and the 12 pt bottom edge. Captions on every kind start on the content column (x = 24); image cards get there through the smaller picture inset, row cards through the card padding.
 
 **Icons** align by their layout box. SF Symbols carry side bearings, so an icon's ink may sit up to 2 pt inside the column, never outside it.
 
@@ -61,10 +61,11 @@ Every measurement in the panel comes from this grid. `LayoutRules` (in `App/Layo
 | `Chip` | Pinned items: a 28 pt capsule (one control row), content 12 pt in, 12 pt medium text, at most 160 pt wide. |
 | `FilterBar` | All · Notes · Links · Images · Files. The selected filter shows its title with its content 12 pt in; the rest are 28 pt icon squares with tooltips, 4 pt apart. |
 | `CardSurface` | Opaque (legible over any wallpaper), radius 14. States: hover (lighter fill), selected (2 pt accent ring), copied (accent wash). |
+| `Caption` | Text you add to an image, PDF, file or folder. It sits on the content column under the item, uses the body size, wraps to four lines on the card, and is searchable. Its editor is the same inline editor as notes, with a ⇧↩ hint and Save/Cancel. |
 | `ToastView` | An inverse capsule with at most one action. 2.5 s, or 6 s when it offers Undo; ⌘Z works while it shows. |
 | `Banner` | For problems that persist (a busy hot corner, storage trouble). Warning surface, no stroke, the problem and the fix in one sentence, then buttons. |
 | `KeyHint` | One 11 pt hint: "⇧↩ new line" on the composer's toolbar line and under an inline edit. One weight, in the hint tone (the paper's secondary ink on tinted notes), so it never looks like a button. Always shown, so nothing moves. |
-| `InlineTextEditor` | Edits in place with the card's own font and padding. Keeps rich text as RTF. Return (or ⌘↩) saves, ⇧↩ starts a new line, Esc cancels, and leaving it any other way saves. The card shows Cancel and Save under it (small system buttons, Save prominent) and a ⇧↩ hint. An `InlineEditHandle` lets those buttons end the edit. |
+| `InlineTextEditor` | Edits in place with the card's own font and padding. Keeps rich text as RTF when asked. Return (or ⌘↩) saves, ⇧↩ starts a new line, Esc cancels, and leaving it any other way saves. The card shows Cancel and Save under it (small system buttons, Save prominent) and a ⇧↩ hint. An `InlineEditHandle` lets those buttons end the edit. It tracks every live platform view for one edit, because a growing card in a lazy list can make SwiftUI build two; a duplicate leaving never ends the live edit. |
 | `KeyTextView` | The composer and search field: an `NSTextView` with a placeholder, ⌘V interception and auto-height. |
 | `MiniStickyNote` | The brand illustration and the only place gradients are allowed. |
 | `ScreenPreview` | A drawn Mac screen (desktop tinted with your accent color, menu bar, a window, the Dock) for the corner picker and the setup guide. Drawn, never your wallpaper: decoration never asks for a permission. |
@@ -74,11 +75,12 @@ Every measurement in the panel comes from this grid. `LayoutRules` (in `App/Layo
 * **A click on a card** does one thing, chosen in Settings ▸ Notes ▸ Clicking a note: it **edits a note in place** (the default) or **copies it**. Links, images, files and hidden password copies can't be edited in place, so a click copies them either way. Copy (button, ⌘C) and Edit (button, ⌘E, double-click) stay one step away in both modes.
 * **Selection** (the 2 pt accent outline) means "Return, ⌘C and these buttons act on this card". It follows where you're working: clicking a card, ↑ ↓ and Edit select it; clicking the composer, search or empty space, typing a note, or finishing an edit clears it. Never leave an outline on something you've moved away from.
 * **Field chrome belongs to the field:** clicking a field's icon, padding or toolbar line puts the caret in its text. Clicking an inline editor's padding keeps the edit.
+* **Captions belong to media and documents.** A card for an image, PDF, file, folder, color or app data shows a speech-bubble button instead of Edit. It opens a caption editor on the content column; Return or Save keeps it, Esc cancels, and clicking elsewhere saves. ⌘⇧E does the same from the keyboard, and the right-click menu can add, edit or remove the caption. Notes and links don't get one: their text is the item.
 * **Empty space is neutral:** it clears the selection and saves an open edit (like clicking away), and the caret goes back to the composer only when an edit ended.
 
 ## Settings
 
-Settings uses the system's own layout, like System Settings: a native sidebar (`NavigationSplitView` + `List`), the pane's title in the toolbar (`navigationTitle`, bridged with `sceneBridgingOptions`), and grouped `Form`s. Nothing there is positioned by hand, so the sidebar, title and forms line up the way every Mac app's do. Our own content inside a form (the corner preview) uses tokens and is checked by `make layout` (centered in its pane, every sidebar row present, window title = pane).
+Settings uses the system's own layout, like System Settings: a native sidebar (`NavigationSplitView` + `List`), the pane's title in the toolbar (`navigationTitle`, bridged with `sceneBridgingOptions`), and grouped `Form`s. Nothing there is positioned by hand, so the sidebar, title and forms line up the way every Mac app's do. Our own content inside a form (the corner preview) uses tokens and is checked by `make layout` (centered in its pane, every sidebar row present, window title = pane). Corner ▸ the drag controls set whether holding a drag opens the panel, its delay, and the catch area (Small 44, Medium 72, Large 120 pt).
 
 ## Writing
 
@@ -86,6 +88,7 @@ Settings uses the system's own layout, like System Settings: a native sidebar (`
 * **Glossary:**
   * *item*: anything saved
   * *note*: text only
+  * *caption*: your own text on an image, PDF, file or folder
   * *Save* (not Add or Stash)
   * *Delete* (not Remove)
   * *Pin*

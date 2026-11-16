@@ -70,6 +70,8 @@ public enum Motion {
     public static var standard: Animation { reduceMotion ? fade() : .smooth(duration: 0.22) }
     /// List inserts/reorders, onboarding steps, the corner note peeking out.
     public static var emphasized: Animation { reduceMotion ? fade() : .smooth(duration: 0.28) }
+    /// A held drag at the corner: a short, decaying shake before the panel opens.
+    public static var shake: Animation { reduceMotion ? fade(0.1) : .easeInOut(duration: 0.34) }
     /// Leaving is quicker than arriving.
     public static var exit: Animation { reduceMotion ? fade(0.12) : .timingCurve(0.5, 0, 0.75, 0, duration: 0.18) }
     public static var panelIn: Animation { reduceMotion ? fade() : .smooth(duration: 0.3) }

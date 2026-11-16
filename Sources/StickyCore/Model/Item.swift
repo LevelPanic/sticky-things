@@ -133,6 +133,9 @@ public struct Item: Identifiable, Codable, Hashable, Sendable {
     public var text: String
     /// Optional title: page title, file name, or one the user gave it.
     public var title: String?
+    /// Text the user added to a non-text item (an image, PDF, file…). Separate from the captured
+    /// data, so it never changes what the item gives back when copied.
+    public var caption: String?
     /// Everything that was on the pasteboard, losslessly. Empty for notes typed in the app.
     public var snapshot: [SnapshotItem]
     public var files: [StoredFile]
@@ -151,14 +154,16 @@ public struct Item: Identifiable, Codable, Hashable, Sendable {
     public var fingerprint: String?
 
     public init(id: UUID = UUID(), kind: ItemKind, text: String, title: String? = nil,
-                snapshot: [SnapshotItem] = [], files: [StoredFile] = [], link: LinkInfo? = nil,
-                pixelSize: PixelSize? = nil, pageCount: Int? = nil, source: SourceApp? = nil,
-                tint: Tint = .none, pinned: Bool = false, concealed: Bool = false,
-                createdAt: Date = Date(), updatedAt: Date? = nil, byteSize: Int64 = 0, fingerprint: String? = nil) {
+                caption: String? = nil, snapshot: [SnapshotItem] = [], files: [StoredFile] = [],
+                link: LinkInfo? = nil, pixelSize: PixelSize? = nil, pageCount: Int? = nil,
+                source: SourceApp? = nil, tint: Tint = .none, pinned: Bool = false,
+                concealed: Bool = false, createdAt: Date = Date(), updatedAt: Date? = nil,
+                byteSize: Int64 = 0, fingerprint: String? = nil) {
         self.id = id
         self.kind = kind
         self.text = text
         self.title = title
+        self.caption = caption
         self.snapshot = snapshot
         self.files = files
         self.link = link
@@ -193,10 +198,18 @@ public struct Item: Identifiable, Codable, Hashable, Sendable {
 
     /// Text that search matches against (lowercased by the store).
     public var searchText: String {
-        var parts = [text, title ?? "", kind.label, source?.name ?? ""]
+        var parts = [text, title ?? "", caption ?? "", kind.label, source?.name ?? ""]
         parts += files.map(\.name)
         if let link { parts.append(link.url) }
         return parts.joined(separator: " ")
+    }
+
+    /// Whether a user caption makes sense for this kind (media and documents, not notes).
+    public var supportsCaption: Bool {
+        switch kind {
+        case .image, .pdf, .file, .folder, .files, .color, .other: return !concealed
+        case .text, .richText, .link: return false
+        }
     }
 
     /// Every blob this item references (for garbage collection).

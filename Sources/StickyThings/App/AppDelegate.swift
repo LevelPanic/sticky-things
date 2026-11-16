@@ -32,6 +32,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.onboarding?.model.cornerActivated()
             self?.togglePanel(on: screen)
         }
+        corners.onDragOpen = { [weak self] screen in
+            guard let self, !self.panel.isShown else { return }
+            self.panel.showForDrop(.corner(screen, self.settings.corner))
+        }
         corners.onDrop = { [weak self] pasteboard in
             self?.panel.model.drop(pasteboard, source: DropTypes.currentSourceApp()) ?? false
         }

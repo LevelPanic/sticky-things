@@ -12,25 +12,27 @@ struct ItemCard: View {
     let item: Item
     @ObservedObject var model: PanelModel
     @State private var editorHeight: CGFloat = 18
+    @State private var captionEditorHeight: CGFloat = 18
 
     private var store: ItemStore { model.store }
     private var isHovered: Bool { model.hoveredID == item.id }
     private var isSelected: Bool { model.selection == item.id }
     private var isCopied: Bool { model.copiedID == item.id }
     private var isEditing: Bool { model.editingID == item.id }
-    private var showsActions: Bool { (isHovered || isSelected) && !isEditing }
+    private var isEditingCaption: Bool { model.captionEditingID == item.id }
+    private var showsActions: Bool { (isHovered || isSelected) && !isEditing && !isEditingCaption }
     private var tint: Swatch? { item.kind.isTextual ? item.tint.swatch : nil }
 
     var body: some View {
         content
             .padding(item.kind == .image ? PanelLayout.imageInset : PanelLayout.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cardSurface(tint: tint, hovered: isHovered, selected: isSelected || isEditing, highlighted: isCopied)
+            .cardSurface(tint: tint, hovered: isHovered, selected: isSelected || isEditing || isEditingCaption, highlighted: isCopied)
             .contentShape(RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
-            .modifier(CardGestures(enabled: !isEditing, item: item, model: model))
+            .modifier(CardGestures(enabled: !isEditing && !isEditingCaption, item: item, model: model))
             // Accessibility: the card is one element with named actions (VoiceOver, the self-test)…
-            .accessibilityElement(children: isEditing ? .contain : .ignore)
-            .accessibilityLabel("\(item.kind.label), \(item.headline), \(RelativeTime.short(item.createdAt))")
+            .accessibilityElement(children: isEditing || isEditingCaption ? .contain : .ignore)
+            .accessibilityLabel(accessibilityLabel)
             .accessibilityHint(model.clickAction(for: item) == .edit ? "Edits the note" : "Copies to the clipboard")
             .accessibilityAddTraits(.isButton)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -38,6 +40,7 @@ struct ItemCard: View {
             .accessibilityAction(named: "Copy") { model.copy(item) }
             .accessibilityAction(named: primaryActionName) { model.activate(item) }
             .accessibilityAction(named: item.pinned ? "Unpin" : "Pin") { model.togglePin(item) }
+            .modifier(CaptionAccessibility(item: item, model: model))
             .accessibilityAction(named: "Delete") { model.delete(item) }
             .accessibilityIdentifier("card-\(item.id.uuidString)")
             // …and its buttons sit on top as their own elements, so they stay reachable.
@@ -58,6 +61,14 @@ struct ItemCard: View {
         case .link: return "Open Link"
         default: return "Quick Look"
         }
+    }
+
+    private var accessibilityLabel: String {
+        var parts = [item.kind.label]
+        if let caption = item.caption, !caption.isEmpty { parts.append(caption) }
+        parts.append(item.headline)
+        parts.append(RelativeTime.short(item.createdAt))
+        return parts.joined(separator: ", ")
     }
 
     // MARK: Content
@@ -94,6 +105,7 @@ struct ItemCard: View {
                 textColor: tint == nil ? Palette.textPrimary.nsColor : TintPalette.ink.nsColor,
                 height: $editorHeight,
                 handle: model.editHandle,
+                editToken: model.editSession,
                 onFinish: { text, rtf, ending in model.finishEditing(item.id, text: text, rtf: rtf, ending: ending) }
             )
             .id(model.editSession)
@@ -136,37 +148,95 @@ struct ItemCard: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: imageHeight)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.inner(Radius.l, padding: PanelLayout.imageInset), style: .continuous))
+            captionSection
+                .padding(.horizontal, imageCaptionInset)
             // Back on the content column and the cards' 12 pt bottom edge.
             meta(imageDetail)
-                .padding(.horizontal, PanelLayout.cardPadding - PanelLayout.imageInset)
-                .padding(.bottom, PanelLayout.cardPadding - PanelLayout.imageInset)
+                .padding(.horizontal, imageCaptionInset)
+                .padding(.bottom, imageCaptionInset)
         }
     }
 
     private var filesContent: some View {
-        HStack(spacing: Space.m) {
-            FileStack(item: item, store: store)
-            VStack(alignment: .leading, spacing: Space.xxs) {
-                Text("\(item.files.count) items").font(TypeScale.bodyStrong).foregroundStyle(Palette.textPrimary.color)
-                Text(item.files.map(\.name).joined(separator: ", "))
-                    .font(TypeScale.callout).foregroundStyle(Palette.textSecondary.color).lineLimit(1).truncationMode(.middle)
-                meta(nil)
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.m) {
+                FileStack(item: item, store: store)
+                VStack(alignment: .leading, spacing: Space.xxs) {
+                    Text("\(item.files.count) items").font(TypeScale.bodyStrong).foregroundStyle(Palette.textPrimary.color)
+                    Text(item.files.map(\.name).joined(separator: ", "))
+                        .font(TypeScale.callout).foregroundStyle(Palette.textSecondary.color).lineLimit(1).truncationMode(.middle)
+                }
             }
+            captionSection
+            meta(nil)
         }
     }
 
     private func rowContent(title: String, detail: String) -> some View {
-        HStack(spacing: Space.m) {
-            ItemIcon(item: item, store: store, size: 32)
-            VStack(alignment: .leading, spacing: Space.xxs) {
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.m) {
+                ItemIcon(item: item, store: store, size: 32)
                 Text(title)
                     .font(TypeScale.bodyStrong)
                     .foregroundStyle(Palette.textPrimary.color)
                     .lineLimit(2)
                     .truncationMode(.middle)
-                meta(detail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            captionSection
+            meta(detail)
         }
+    }
+
+    /// The user's own text under the media or document, or the editor for it.
+    @ViewBuilder private var captionSection: some View {
+        if isEditingCaption {
+            captionEditingBlock
+        } else if let caption = item.caption, !caption.isEmpty {
+            Text(caption)
+                .font(TypeScale.body)
+                .lineSpacing(2)
+                .lineLimit(4)
+                .foregroundStyle(Palette.textPrimary.color)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var captionEditingBlock: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            InlineTextEditor(
+                initialText: item.caption ?? "",
+                font: TypeScale.bodyNSFont,
+                textColor: Palette.textPrimary.nsColor,
+                height: $captionEditorHeight,
+                handle: model.captionEditHandle,
+                editToken: model.captionEditSession,
+                onFinish: { text, _, ending in model.finishCaptionEditing(item.id, text: text, ending: ending) }
+            )
+            .id(model.captionEditSession)
+            .frame(height: captionEditorHeight)
+            .accessibilityIdentifier("caption-editor-\(item.id.uuidString)")
+            HStack(spacing: Space.s) {
+                KeyHint("⇧↩", "new line")
+                Spacer(minLength: 0)
+                Button("Cancel") { model.captionEditHandle.cancel() }
+                    .help("Cancel (Esc)")
+                    .accessibilityIdentifier("caption-cancel-\(item.id.uuidString)")
+                Button("Save") { model.captionEditHandle.save() }
+                    .buttonStyle(.borderedProminent)
+                    .help("Save (↩)")
+                    .accessibilityIdentifier("caption-save-\(item.id.uuidString)")
+            }
+            .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture { model.captionEditHandle.focus() }
+    }
+
+    private var imageCaptionInset: CGFloat {
+        PanelLayout.cardPadding - PanelLayout.imageInset
     }
 
     /// "github.com · Safari · 2 min ago" — the trailing part hides while the action bar shows.
@@ -196,6 +266,12 @@ struct ItemCard: View {
         HStack(spacing: Space.xxs) {
             IconButton(isCopied ? "Copied" : "Copy", symbol: isCopied ? "checkmark" : "doc.on.doc", isOn: isCopied) { model.copy(item) }
                 .accessibilityIdentifier("copy-\(item.id.uuidString)")
+            if model.supportsCaption(item) {
+                IconButton(item.caption == nil ? "Add Caption" : "Edit Caption", symbol: "text.bubble") {
+                    model.beginCaptionEditing(item)
+                }
+                .accessibilityIdentifier("caption-\(item.id.uuidString)")
+            }
             switch item.kind {
             case .text, .richText:
                 IconButton("Edit", symbol: "pencil") { model.beginEditing(item) }
@@ -291,6 +367,27 @@ struct CardGestures: ViewModifier {
     }
 }
 
+/// VoiceOver actions for the text attached to a media item or document. Only media and
+/// documents get them; notes already have their own Edit action.
+struct CaptionAccessibility: ViewModifier {
+    let item: Item
+    @ObservedObject var model: PanelModel
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if model.supportsCaption(item) {
+            if item.caption == nil {
+                content.accessibilityAction(named: "Add Caption") { model.beginCaptionEditing(item) }
+            } else {
+                content
+                    .accessibilityAction(named: "Edit Caption") { model.beginCaptionEditing(item) }
+                    .accessibilityAction(named: "Remove Caption") { model.removeCaption(item) }
+            }
+        } else {
+            content
+        }
+    }
+}
+
 /// The full action list (right-click menu and the card's "More" button).
 struct CardMenuItems: View {
     let item: Item
@@ -313,6 +410,10 @@ struct CardMenuItems: View {
             if !compact { Button("Quick Look") { model.quickLook(item) } }
             Button("Open") { model.open(item) }
             if !item.files.isEmpty { Button("Show in Finder") { model.reveal(item) } }
+        }
+        if model.supportsCaption(item) {
+            Button(item.caption == nil ? "Add Caption" : "Edit Caption") { model.beginCaptionEditing(item) }
+            if item.caption != nil { Button("Remove Caption") { model.removeCaption(item) } }
         }
         Button(item.pinned ? "Unpin" : "Pin to Top") { model.togglePin(item) }
         if item.kind.isTextual {

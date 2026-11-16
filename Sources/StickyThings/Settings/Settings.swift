@@ -20,6 +20,12 @@ final class Settings: ObservableObject {
     @Published var hoverDelay: Double { didSet { defaults.set(hoverDelay, forKey: Keys.hoverDelay) } }
     /// Show the little note that peeks out of the corner when the pointer arrives.
     @Published var showPeek: Bool { didSet { defaults.set(showPeek, forKey: Keys.showPeek) } }
+    /// Hold a drag in the corner for a moment to open the panel instead of saving on release.
+    @Published var dragToOpen: Bool { didSet { defaults.set(dragToOpen, forKey: Keys.dragToOpen) } }
+    /// Seconds a drag has to rest in the corner before the panel opens.
+    @Published var dragOpenDelay: Double { didSet { defaults.set(dragOpenDelay, forKey: Keys.dragOpenDelay) } }
+    /// How large the corner's temporary catch area is while a drag is in progress.
+    @Published var dragTriggerArea: CornerDragArea { didSet { defaults.set(dragTriggerArea.rawValue, forKey: Keys.dragTriggerArea) } }
     @Published var allDisplays: Bool { didSet { defaults.set(allDisplays, forKey: Keys.allDisplays) } }
     @Published var showMenuBarIcon: Bool { didSet { defaults.set(showMenuBarIcon, forKey: Keys.showMenuBarIcon) } }
     @Published var hotKey: KeyCombo? {
@@ -59,6 +65,9 @@ final class Settings: ObservableObject {
         trigger = CornerTrigger(rawValue: defaults.string(forKey: Keys.trigger) ?? "") ?? .click
         hoverDelay = defaults.object(forKey: Keys.hoverDelay) as? Double ?? 0.25
         showPeek = defaults.object(forKey: Keys.showPeek) as? Bool ?? true
+        dragToOpen = defaults.object(forKey: Keys.dragToOpen) as? Bool ?? true
+        dragOpenDelay = defaults.object(forKey: Keys.dragOpenDelay) as? Double ?? 0.6
+        dragTriggerArea = CornerDragArea(rawValue: defaults.string(forKey: Keys.dragTriggerArea) ?? "") ?? .medium
         allDisplays = defaults.object(forKey: Keys.allDisplays) as? Bool ?? true
         showMenuBarIcon = defaults.object(forKey: Keys.showMenuBarIcon) as? Bool ?? true
         if let data = defaults.data(forKey: Keys.hotKey) {
@@ -78,6 +87,9 @@ final class Settings: ObservableObject {
         static let trigger = "trigger"
         static let hoverDelay = "hoverDelay"
         static let showPeek = "showPeek"
+        static let dragToOpen = "dragToOpen"
+        static let dragOpenDelay = "dragOpenDelay"
+        static let dragTriggerArea = "dragTriggerArea"
         static let allDisplays = "allDisplays"
         static let showMenuBarIcon = "showMenuBarIcon"
         static let hotKey = "hotKey"

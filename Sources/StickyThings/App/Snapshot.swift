@@ -135,6 +135,12 @@ enum Snapshot {
              ago: 42, source: "Finder")
         save({ pb in pb.setData(sampleImage(), forType: .png) }, ago: 18, source: "Screenshot")
         note("https://github.com/utsavg05/StickyEdges", ago: 6)
+        if let image = store.items.first(where: { $0.kind == .image }) {
+            store.setCaption(image.id, to: "The new panel on the corner, before the spacing pass")
+        }
+        if let pdf = store.items.first(where: { $0.kind == .pdf }) {
+            store.setCaption(pdf.id, to: "Signed lease, keep until the deposit comes back")
+        }
         if let link = store.items.first(where: { $0.kind == .link }) {
             store.update(link.id) { $0.link?.title = "StickyEdges: sticky notes for your screen edge" }
         }

@@ -102,6 +102,12 @@ public final class ItemStore: ObservableObject {
 
     public func setTint(_ tint: Tint, for id: UUID) { update(id) { $0.tint = tint } }
 
+    /// Sets or removes the text the user added to an image, PDF or file.
+    public func setCaption(_ id: UUID, to caption: String?) {
+        let trimmed = caption?.trimmingCharacters(in: .whitespacesAndNewlines)
+        update(id) { $0.caption = (trimmed?.isEmpty ?? true) ? nil : trimmed }
+    }
+
     @discardableResult
     public func delete(_ id: UUID) -> Removed? {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return nil }

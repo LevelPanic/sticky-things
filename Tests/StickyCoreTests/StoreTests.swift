@@ -134,6 +134,34 @@ final class ItemStoreTests: XCTestCase {
         XCTAssertEqual(store.items.map(\.id), [b.id, a.id])
     }
 
+    func testCaptionsPersistSearchAndClear() throws {
+        let item = Item(kind: .image, text: "Receipt.png", title: "Receipt.png")
+        do {
+            let store = try ItemStore(paths: paths)
+            store.insert(item)
+            XCTAssertTrue(item.supportsCaption)
+            store.setCaption(item.id, to: "  Deposit receipt for the new place  ")
+            XCTAssertEqual(store.item(item.id)?.caption, "Deposit receipt for the new place")
+            XCTAssertEqual(store.search("deposit receipt").map(\.id), [item.id], "captions are searchable")
+        }
+        let reopened = try ItemStore(paths: paths)
+        XCTAssertEqual(reopened.item(item.id)?.caption, "Deposit receipt for the new place", "captions persist")
+        reopened.setCaption(item.id, to: "   ")
+        XCTAssertNil(reopened.item(item.id)?.caption, "an empty caption is no caption")
+    }
+
+    func testItemsSavedBeforeCaptionsStillDecode() throws {
+        let json = """
+        {"id":"\(UUID())","kind":"text","text":"old note","snapshot":[],"files":[],
+         "tint":"none","pinned":false,"concealed":false,"createdAt":1,"updatedAt":1,"byteSize":0}
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        let item = try decoder.decode(Item.self, from: Data(json.utf8))
+        XCTAssertEqual(item.text, "old note")
+        XCTAssertNil(item.caption, "a missing caption is nil, not a failed load")
+    }
+
     func testRetentionAndGarbageCollection() throws {
         let store = try ItemStore(paths: paths, inMemory: true)
         let capture = CaptureService(store: store)

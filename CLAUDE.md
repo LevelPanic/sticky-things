@@ -17,8 +17,8 @@ Keep this file current. After any change that moves the status, the known gaps o
 ## Commands
 
 ```bash
-make test        # 39 unit tests: StickyCore, StickyDesign (contrast + design lint), PanelModel
-make selftest    # drives the real panel through in-process accessibility (49 checks incl. the grid and both click modes, throwaway library)
+make test        # 46 unit tests: StickyCore, StickyDesign (contrast + design lint), PanelModel
+make selftest    # drives the real panel through in-process accessibility (57 checks incl. the grid, captions and drag-open, throwaway library)
 make layout      # every panel state and Settings pane, light and dark: rules + captures and frames in build/layout
 make snapshots   # renders every screen to build/snapshots (offscreen, flat surface instead of glass)
 make install     # release build, copy to /Applications, relaunch (scripts/build-app.sh --install)
@@ -46,6 +46,8 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 - **Writing.** No em dashes, no exclamation marks. Labels are verb + object in Title Case. Glossary: item, note, Save, Delete, Pin. Prefer Undo over confirmation dialogs.
 - **Selection follows where you're working** (docs/DESIGN.md#interaction; rule in `PanelModel`, "Where you're working"). New things you can click either select a card or call `pointedAtComposer`/`pointedAtSearch`/`clickedBackground`; anything that ends an edit goes through `finishEditing`. The model owns the open edit via `editHandle`; save or cancel through it rather than moving focus.
 - **Clicks:** a card click goes through `PanelModel.click` (never call `copy` from a card's tap directly). It edits notes by default or copies them (`Settings.clickAction`, Settings ▸ Notes); links, images, files and concealed items always copy. `beginEditing` on the card already being edited keeps the edit.
+- **Captions** are `Item.caption`, separate from the lossless snapshot. Media/documents (image, PDF, file, folder, files, color, other) get a speech-bubble button, ⌘⇧E, a right-click item and a VoiceOver action; notes and links do not. The editor is the same `InlineTextEditor`, with its own `captionEditHandle` and `captionEditSession`.
+- **Corner drags** have two speeds: release quickly to save directly, hold for `Settings.dragOpenDelay` to shake and open the panel. `DragSessionWatcher` polls the pressed button and pointer because AppKit has no global drag notification; corners only grow to `dragTriggerArea` while that says a drag is in progress. A drag-open uses `PanelController.showForDrop` and must not make the panel key or activate the app.
 - **Nothing hover-only.** Every action is reachable by click (selected cards keep their buttons), right-click menu, keyboard shortcut and a named VoiceOver action.
 - **Accessibility modifiers go before overlays** on a view, or the overlay's buttons disappear from the accessibility tree (this broke VoiceOver and the self-test once).
 - **New UI behavior gets a self-test check** in `App/SelfTest.swift` (find by `accessibilityIdentifier`, act with AX press or named actions). New capture or storage behavior gets a `StickyCoreTests` case using a private `NSPasteboard(name:)` and a temp folder.
@@ -61,6 +63,8 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 - `.onHover` must come *after* any overlay that holds buttons. Placed before it, resting the pointer on the buttons counts as leaving the card and they vanish (v2.0 bug).
 - `NSGlassEffectView` as a window's content draws its shadow into the square corners, and macOS then outlines a rectangle. `PanelChrome` clips the content view to the rounded shape.
 - `NSViewRepresentable` text views: SwiftUI reuses platform views and skips `dismantleNSView`, AppKit skips `resignFirstResponder` for views removed from the window, and `textDidEndEditing` needs a change first. `InlineTextEditor` ends edits on resign *and* on leaving the window, takes focus in `viewDidMoveToWindow`, and each edit gets `.id(editSession)`. See docs/PLATFORM.md.
+- A growing card in a lazy list can make SwiftUI build **two** platform views for one edit. Both must not finish the edit or update the shared height: `InlineEditHandle` tracks live owners per edit token, and a zero-width measurement copy neither attaches nor focuses (v2.9, found when adding captions).
+- There is no public notification for a drag session started in another app. `DragSessionWatcher` watches the left button going down and samples `pressedMouseButtons` plus `mouseLocation` while it is held; only then do corners grow into their drag catch area. Global mouse monitoring does not need Accessibility; key monitoring does.
 - Return in the composer must save typed text even when a card is selected (it used to copy the selected card and close the panel).
 - The self-test needs an unlocked, idle Mac. While the screen is locked the panel can't become key, and if the owner types or clicks during a run their input lands in the test panel or closes it. Either way many text checks fail. Check `CGSessionCopyCurrentDictionary()["CGSSessionScreenIsLocked"]` and rerun before trusting a failing run.
 - Measuring SwiftUI: an outer `.accessibilityIdentifier` on a non-element container overrides every identifier inside it (make it `.accessibilityElement(children: .contain)` first). A SwiftUI group's AX frame is the union of its children, and a short bottom-anchored `ScrollView` reports an offset frame; use `layoutProbe` for layout boxes. AX reports SF Symbols' ink, not their layout box.
@@ -83,7 +87,7 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 - Design bar: "line for line, column for column", a real design system, consistent proportions and whitespace; native macOS where the system already does it.
 - Wants this file, the docs and memory kept current with every change, and commits only when asked.
 
-## Status (2026-11-10)
+## Status (2026-11-12)
 
 - **v1** (commit `51b29ac`): first working corner panel, JSON storage.
 - **v2** (commit "Sticky Things v2: throw in anything…", 2026-11-08): three-module restructure, lossless capture of anything, SQLite storage with one-time v1 import, one-click copy, edit in place, Quick Look, drag out, Impeccable-based design system with contrast and lint tests, guided Hot Corners setup, new icon, accessibility-driven self-test. Installed in /Applications and running; the owner's 2 v1 notes migrated; the owner turned off their bottom-right Quick Note hot corner.
@@ -95,8 +99,9 @@ User data lives in `~/Library/Application Support/Sticky Things/` (`library.sqli
 - **v2.6** (2026-11-08, owner: the "new line" hint looked like a button): hints use `Palette.hint` (system placeholder tone, ≥ 3:1, quieter than secondary text, tested) in one weight; on tinted notes they use the paper's secondary ink.
 - **v2.7** (2026-11-08, owner's request): a click on a note edits it in place by default; Settings ▸ Notes ▸ "Clicking a note" switches to copying. Links, images, files and hidden password copies always copy. Fixed: starting an edit you're already in rebuilt the editor (a double-click would have ended the edit).
 - **v2.8** (2026-11-08, owner: Settings asked for a permission and had design issues): the corner preview is drawn (`ScreenPreview`, accent-tinted desktop) instead of reading the wallpaper from ~/Desktop, so no Files & Folders prompt; lint bans `desktopImageURL`. Settings rebuilt on native layout (sidebar, title in the toolbar, grouped forms) with tokens and glossary wording; `make layout` captures and checks every pane.
+- **v2.9** (2026-11-12, owner's request): holding a drag in the corner now shakes the note and opens the panel after a configurable delay (default 0.6 s), after growing a configurable catch area (Small 44 / Medium 72 / Large 120 pt). A quick drop still saves directly. `DragSessionWatcher` supplies the missing global drag signal by sampling the pressed button and pointer. Images, PDFs, files, folders, colors and app data can now carry a searchable, undoable caption: card button, ⌘⇧E, right-click menu, VoiceOver action, and the inline editor. Fixed the inline editor's duplicate platform-view bug (a growing card in a lazy list built two; a zero-width copy stole focus and height) with token-aware `InlineEditHandle` tracking and readiness gating.
 
-**Waiting on the owner:** confirm click-to-edit feels right (and the Settings ▸ Notes switch), clicking empty space clears the outline (needs a real pointer), the new layout and the two-line composer feel right in real use, editing feels right (Save/Cancel bar, Return, clicking away), hover buttons stay put while resting on them, the round corners, the first click right after opening, and the drag matrix in docs/TESTING.md (Finder, Preview, Photos, Safari, Mail, Notes, screenshot thumbnail, 1Password).
+**Waiting on the owner:** confirm the drag-to-open feel in real use (shake, delay, area sizes, quick drop vs hold, dropping into the panel from Finder/Preview/Photos), caption editing on images and documents (button, ⌘⇧E, wrapping, click-away save, Remove + Undo), and the earlier open questions: click-to-edit, clicking empty space clears the outline, the layout and two-line composer, the Save/Cancel bar, hover buttons, round corners, first click after opening, and the drag matrix in docs/TESTING.md (Finder, Preview, Photos, Safari, Mail, Notes, screenshot thumbnail, 1Password).
 
 **Known gaps (candidates for next):**
 - The onboarding window looks consistent but isn't covered by `LayoutRules` or `make layout` (only offscreen snapshots).

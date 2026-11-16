@@ -101,3 +101,25 @@ enum CornerTrigger: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
     var name: String { self == .click ? "Click" : "Hover" }
 }
+
+/// How far from the corner a drag is caught while the mouse button is down. The corner is tiny
+/// at rest (so it never gets in the way); this is the temporary catcher that makes drags easy.
+enum CornerDragArea: String, CaseIterable, Codable, Identifiable {
+    case small, medium, large
+    var id: String { rawValue }
+    var name: String {
+        switch self {
+        case .small: return "Small"
+        case .medium: return "Medium"
+        case .large: return "Large"
+        }
+    }
+    /// The side of the square catch area, in points.
+    var size: CGFloat {
+        switch self {
+        case .small: return 44
+        case .medium: return 72
+        case .large: return 120
+        }
+    }
+}

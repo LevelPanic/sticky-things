@@ -131,9 +131,25 @@ private struct CornerSettings: View {
                     }
                 }
                 Toggle("Peek a little note when the pointer reaches the corner", isOn: $settings.showPeek)
+                Toggle("Open the panel when I hold a drag at the corner", isOn: $settings.dragToOpen)
+                if settings.dragToOpen {
+                    LabeledContent("Drag delay") {
+                        HStack {
+                            Slider(value: $settings.dragOpenDelay, in: 0.2...1.5, step: 0.05)
+                            Text(String(format: "%.2fs", settings.dragOpenDelay))
+                                .monospacedDigit().frame(width: 52, alignment: .trailing)
+                        }
+                    }
+                    Picker("Drag trigger area", selection: $settings.dragTriggerArea) {
+                        ForEach(CornerDragArea.allCases) { area in Text(area.name).tag(area) }
+                    }
+                    .pickerStyle(.segmented)
+                }
                 Toggle("Use the corner on every display", isOn: $settings.allDisplays)
             } footer: {
-                Text("Tip: drag a file, image or text onto the corner to save it without opening anything.")
+                Text(settings.dragToOpen
+                     ? "Drop right on the corner to save instantly, or hold a drag there until the panel opens and drop it into the panel."
+                     : "Tip: drag a file, image or text onto the corner to save it without opening anything.")
             }
 
             Section("macOS Hot Corners") {
@@ -304,6 +320,7 @@ private struct AboutSettings: View {
                 shortcut("↑ ↓", "Browse your notes")
                 shortcut("⌘C", "Copy the selected note")
                 shortcut("⌘E · ⌘O", "Edit · open the selected note")
+                shortcut("⌘⇧E", "Add or edit text on an image, PDF or file")
                 shortcut("⌘P", "Pin / unpin")
                 shortcut("⌘⌫", "Delete (⌘Z to undo)")
                 shortcut("⌘1 – ⌘9", "Copy a pinned note and close")

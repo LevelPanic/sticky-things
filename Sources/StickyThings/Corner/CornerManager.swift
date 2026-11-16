@@ -6,12 +6,15 @@ import Combine
 final class CornerManager {
     private(set) var windows: [CornerWindow] = []
     private let settings: Settings
+    private let dragWatcher = DragSessionWatcher()
     private var observers: [NSObjectProtocol] = []
     private var cancellables = Set<AnyCancellable>()
     private var rebuildScheduled = false
 
     /// Called with the screen whose corner was clicked/hovered.
     var onActivate: ((NSScreen) -> Void)?
+    /// Called when a drag has rested in the corner long enough to open the panel.
+    var onDragOpen: ((NSScreen) -> Void)?
     var onDrop: ((NSPasteboard) -> Bool)?
     var isPanelOpen: () -> Bool = { false }
 
@@ -21,6 +24,12 @@ final class CornerManager {
 
     func start() {
         rebuild()
+        dragWatcher.onDragChange = { [weak self] dragging in
+            guard let self else { return }
+            if dragging { self.windows.forEach { $0.dragSessionBegan() } }
+            else { self.windows.forEach { $0.dragSessionEnded() } }
+        }
+        dragWatcher.start()
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -38,9 +47,12 @@ final class CornerManager {
             settings.$allDisplays.map { _ in () }.eraseToAnyPublisher(),
             settings.$trigger.map { _ in () }.eraseToAnyPublisher(),
             settings.$hoverDelay.map { _ in () }.eraseToAnyPublisher(),
-            settings.$showPeek.map { _ in () }.eraseToAnyPublisher()
+            settings.$showPeek.map { _ in () }.eraseToAnyPublisher(),
+            settings.$dragToOpen.map { _ in () }.eraseToAnyPublisher(),
+            settings.$dragOpenDelay.map { _ in () }.eraseToAnyPublisher(),
+            settings.$dragTriggerArea.map { _ in () }.eraseToAnyPublisher()
         )
-        .dropFirst(5)
+        .dropFirst(8)
         .receive(on: RunLoop.main)
         .sink { [weak self] in self?.scheduleRebuild() }
         .store(in: &cancellables)
@@ -77,10 +89,17 @@ final class CornerManager {
             let window = CornerWindow(screen: screen, corner: corner, showPeek: settings.showPeek)
             window.trigger = settings.trigger
             window.hoverDelay = settings.hoverDelay
+            window.dragToOpen = settings.dragToOpen
+            window.dragOpenDelay = settings.dragOpenDelay
+            window.dragTriggerArea = settings.dragTriggerArea.size
             window.isPanelOpen = { [weak self] in self?.isPanelOpen() ?? false }
             window.onActivate = { [weak self, weak screen] in
                 guard let self, let screen else { return }
                 self.onActivate?(screen)
+            }
+            window.onDragOpen = { [weak self, weak screen] in
+                guard let self, let screen else { return }
+                self.onDragOpen?(screen)
             }
             window.onDrop = { [weak self] pasteboard in self?.onDrop?(pasteboard) ?? false }
             window.orderFrontRegardless()
