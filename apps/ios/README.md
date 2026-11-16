@@ -15,6 +15,7 @@ A native iOS companion to the Mac app. The idea is not to shrink the Mac panel o
 - **Quick capture:** a full-screen composer with a text editor, system paste button, Photos picker and Files importer.
 - **Action Button + Control Center:** the `New Sticky Thing` control opens the app straight into the composer. Add it from Settings > Action Button > Controls, or Control Center > + > Add a Control > Sticky Things.
 - **Lock Screen:** the same control can be placed in the Lock Screen controls.
+- **Home Screen widget:** pinned and recent items in small, medium and large sizes, plus Lock Screen accessory variants. Rows deep-link to the item; the large widget has a New Sticky Thing button.
 - **Share extension:** save text, links, photos, PDFs and files from other apps without opening Sticky Things.
 - **App Shortcuts:** "New sticky thing in Sticky Things" and "Save to Sticky Things" work with Siri and Shortcuts.
 - **Spotlight:** saved items are indexed on device. Tapping a result opens the item detail. Concealed copies are never indexed.
@@ -57,6 +58,7 @@ The Mac app uses the same schema and layout in `~/Library/Application Support/St
 
 - **Action Button:** Settings > Action Button > Controls > Sticky Things > New Sticky Thing. Pressing the button should open the composer.
 - **Control Center:** swipe down, tap +, add the New Sticky Thing control, tap it.
+- **Home Screen widget:** long-press the Home Screen, tap +, choose Sticky Things, and try small, medium and large. Pinned items should be first, rows should open the item, and the large widget's New Sticky Thing button should open the composer.
 - **Share:** share a link from Safari, a photo from Photos, and a PDF from Files. Each should appear in the library after tapping Save.
 - **Siri/Shortcuts:** "New sticky thing in Sticky Things" and a Save to Sticky Things action with text.
 - **Spotlight:** search for a saved note from the Home Screen and tap the result.
@@ -67,6 +69,5 @@ The simulator builds the controls and extension, but the Action Button and Contr
 ## Not done yet
 
 - iCloud or CloudKit sync between Mac and iPhone
-- a Home Screen widget (the Control widget is done)
 - camera/document scanning as a first-class capture source
 - importing the Mac library into the iOS App Group

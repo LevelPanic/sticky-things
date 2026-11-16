@@ -29,7 +29,7 @@ icon:           ## Redraw the app icon
 ios-project:    ## Regenerate the iOS Xcode project (needs xcodegen)
 	@cd apps/ios && xcodegen generate
 
-ios-build: ios-project ## Build the iOS app for the simulator
+ios-build: ios-project ## Build the iOS app and its extensions for the simulator
 	@xcodebuild -project apps/ios/StickyThings.xcodeproj -scheme StickyThings \
 		-sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
 		-derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO build

@@ -2,6 +2,7 @@ import StickyCore
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import WidgetKit
 
 final class ShareViewController: UIViewController {
     override func viewDidLoad() {
@@ -157,6 +158,7 @@ private struct ShareView: View {
                 let accessed = clip.fileURLs.filter { $0.startAccessingSecurityScopedResource() }
                 defer { accessed.forEach { $0.stopAccessingSecurityScopedResource() } }
                 _ = try capture.save(clip, source: nil)
+                WidgetCenter.shared.reloadAllTimelines()
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 onFinish()
             } catch {

@@ -55,7 +55,7 @@ The same `Item` model, SQLite schema, blob store and file library back both Appl
 - **Get it back in one click.** Click a link, image or file to copy it. On iPhone the system share sheet and Quick Look are one tap away.
 - **Throw it at the corner.** On Mac, drop something on the corner to save it without opening anything. Hold a drag there, watch the note shake, and the panel opens after a short delay.
 - **Find it again.** Search, filters, pinned items, and Spotlight indexing on iPhone.
-- **Native system surfaces.** Status item, hot corner and global shortcut on Mac; Action Button, Control Center, Lock Screen, Home Screen quick action, share sheet, Siri, Shortcuts, Spotlight, system Paste, Quick Look and iPad drag and drop on iPhone.
+- **Native system surfaces.** Status item, hot corner and global shortcut on Mac; Action Button, Control Center, Lock Screen, Home Screen widget, Home Screen quick action, share sheet, Siri, Shortcuts, Spotlight, system Paste, Quick Look and iPad drag and drop on iPhone.
 - **Stay out of the way.** Local-first, no account, no analytics.
 
 ## Install
@@ -132,7 +132,7 @@ make selftest    # drives the real Mac panel through accessibility (57 checks)
 make layout      # checks every Mac panel state against the design grid
 make snapshots   # renders every Mac screen to build/snapshots
 make ios-project # regenerate the iOS Xcode project
-make ios-build   # build the iOS app, Share extension and Control widget
+make ios-build   # build the iOS app, Share extension, Home Screen widget and Control widget
 make install     # release build the Mac app, copy to /Applications and launch
 ```
 
@@ -155,7 +155,7 @@ Working now:
 - [x] Lossless capture of text, rich text, links, images, PDFs, files and folders
 - [x] Shared SQLite and content-addressed blob store across macOS and iOS
 - [x] Mac hot corner, keyboard shortcut, menu bar item and native Settings
-- [x] iPhone Action Button, Control Center, Lock Screen, Home Screen quick action, share sheet, Siri, Shortcuts and Spotlight
+- [x] iPhone Action Button, Control Center, Lock Screen, Home Screen widget, Home Screen quick action, share sheet, Siri, Shortcuts and Spotlight
 - [x] Edit notes and captions in place, with undo
 - [x] Drag to save, drag to open, drag back out on Mac; drag and drop into the iOS list on iPad
 - [x] Design system, contrast tests, design lint, self-test and layout audit on Mac

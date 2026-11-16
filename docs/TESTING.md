@@ -106,7 +106,7 @@ These render the panel (light and dark, full and empty), every onboarding step, 
 
 ## 7. iOS (`apps/ios`)
 
-`make ios-build` compiles the iOS app, its Share extension and the Control widget for the simulator without signing. The shared `StickyCore` unit tests from layer 1 run on the Mac and cover the same storage and item code the iOS app uses.
+`make ios-build` compiles the iOS app, its Share extension, Home Screen widget and Control widget for the simulator without signing. The shared `StickyCore` unit tests from layer 1 run on the Mac and cover the same storage and item code the iOS app uses.
 
 **Simulator smoke test.** Build, install into an iPhone simulator, and launch with these debug arguments:
 
@@ -123,6 +123,7 @@ xcrun simctl launch booted app.stickythings.StickyThings --detail
 
 * **Action Button:** Settings ▸ Action Button ▸ Controls ▸ Sticky Things ▸ New Sticky Thing. Press it from the Lock Screen and from the Home Screen; the composer should appear without an "Open in Sticky Things?" prompt, and the keyboard should be up.
 * **Control Center and Lock Screen:** add the New Sticky Thing control to both.
+* **Home Screen widget:** long-press the Home Screen, tap +, choose Sticky Things, and add each size. Pinned items should come first, rows should open the right item, the large widget's New Sticky Thing button should open the composer, and Lock Screen accessory variants should show the top item and count. Delete an item in the app and watch the widget refresh.
 * **Share sheet:** share a link from Safari, text from Notes, a photo from Photos, a PDF from Files and a large file from another app. Each should save into the same library and appear in the app.
 * **Siri and Shortcuts:** "New sticky thing in Sticky Things" opens the composer. "Save to Sticky Things" with text saves while the app stays closed.
 * **Spotlight:** save a note, search for it from the Home Screen, tap the result. The item detail should open. A concealed copy must not appear.

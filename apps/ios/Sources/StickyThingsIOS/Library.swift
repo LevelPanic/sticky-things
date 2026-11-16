@@ -6,6 +6,7 @@ import StickyCore
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import WidgetKit
 
 /// The iOS library: one local SQLite store, the same schema and item model as the Mac app.
 @MainActor
@@ -97,6 +98,7 @@ final class Library: ObservableObject {
         case .saved(let items):
             flash(items.count > 1 ? "Saved \(items.count) items" : "Saved")
             SpotlightIndexer.shared.reindex(store.items, store: store)
+            WidgetCenter.shared.reloadAllTimelines()
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             return true
         case .duplicate:
@@ -145,18 +147,21 @@ final class Library: ObservableObject {
     func delete(_ item: Item) {
         store.delete(item.id)
         SpotlightIndexer.shared.remove(item.id)
+        WidgetCenter.shared.reloadAllTimelines()
         flash(item.kind.isTextual ? "Note deleted" : "Item deleted")
     }
 
     func togglePin(_ item: Item) {
         store.togglePin(item.id)
         SpotlightIndexer.shared.reindex(store.items, store: store)
+        WidgetCenter.shared.reloadAllTimelines()
         flash(item.pinned ? "Unpinned" : "Pinned")
     }
 
     func setCaption(_ item: Item, to text: String) {
         store.setCaption(item.id, to: text)
         SpotlightIndexer.shared.reindex(store.items, store: store)
+        WidgetCenter.shared.reloadAllTimelines()
         flash(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Caption removed" : "Caption saved")
     }
 
@@ -165,6 +170,7 @@ final class Library: ObservableObject {
         guard !trimmed.isEmpty else { return }
         store.setText(item.id, to: text)
         SpotlightIndexer.shared.reindex(store.items, store: store)
+        WidgetCenter.shared.reloadAllTimelines()
         flash("Note saved")
     }
 

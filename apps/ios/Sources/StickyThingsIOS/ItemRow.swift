@@ -14,6 +14,26 @@ struct ItemRow: View {
     private var tint: Tint { item.kind.isTextual ? item.tint : .none }
 
     var body: some View {
+        visualRow
+            .onTapGesture { library.copy(item) }
+            .onDrag { library.itemProvider(for: item) }
+            .contextMenu {
+                ItemRowMenu(item: item, library: library, onOpen: onOpen,
+                            onEditCaption: onEditCaption, onShare: onShare, onPreview: onPreview)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) { library.delete(item) } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                Button { library.togglePin(item) } label: {
+                    Label(item.pinned ? "Unpin" : "Pin", systemImage: item.pinned ? "pin.slash" : "pin")
+                }
+                .tint(.orange)
+            }
+            .modifier(ItemRowAccessibility(item: item, library: library, onOpen: onOpen))
+    }
+
+    private var visualRow: some View {
         Group {
             switch item.kind {
             case .text, .richText:
@@ -32,26 +52,6 @@ struct ItemRow: View {
                 .fill(tint == .none ? IOSTheme.card : tint.iosPaper)
         )
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .onTapGesture { library.copy(item) }
-        .onDrag { library.itemProvider(for: item) }
-        .contextMenu { menu }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) { library.delete(item) } label: {
-                Label("Delete", systemImage: "trash")
-            }
-            Button { library.togglePin(item) } label: {
-                Label(item.pinned ? "Unpin" : "Pin", systemImage: item.pinned ? "pin.slash" : "pin")
-            }
-            .tint(.orange)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(item.kind.label), \(item.headline), \(IOSDate.short(item.createdAt))")
-        .accessibilityHint("Copies to the clipboard")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction(named: "Copy") { library.copy(item) }
-        .accessibilityAction(named: "Show Details") { onOpen() }
-        .accessibilityAction(named: item.pinned ? "Unpin" : "Pin") { library.togglePin(item) }
-        .accessibilityAction(named: "Delete") { library.delete(item) }
     }
 
     // MARK: Bodies
@@ -129,32 +129,6 @@ struct ItemRow: View {
         .foregroundStyle(tint.iosSecondaryInk)
     }
 
-    // MARK: Menu
-
-    @ViewBuilder private var menu: some View {
-        Button { library.copy(item) } label: { Label("Copy", systemImage: "doc.on.doc") }
-        Button { onOpen() } label: { Label("Show Details", systemImage: "info.circle") }
-        if item.kind == .link, let url = item.link.flatMap({ URL(string: $0.url) }) {
-            Button { UIApplication.shared.open(url) } label: { Label("Open Link", systemImage: "arrow.up.right") }
-        }
-        if !library.shareItems(for: item).isEmpty {
-            Button { onShare() } label: { Label("Share", systemImage: "square.and.arrow.up") }
-        }
-        if item.kind == .image || item.kind == .pdf || !item.files.isEmpty {
-            Button { onPreview() } label: { Label("Quick Look", systemImage: "eye") }
-        }
-        Button { library.togglePin(item) } label: {
-            Label(item.pinned ? "Unpin" : "Pin", systemImage: item.pinned ? "pin.slash" : "pin")
-        }
-        if item.supportsCaption {
-            Button { onEditCaption() } label: {
-                Label(item.caption == nil ? "Add Caption" : "Edit Caption", systemImage: "text.bubble")
-            }
-        }
-        Divider()
-        Button(role: .destructive) { library.delete(item) } label: { Label("Delete", systemImage: "trash") }
-    }
-
     // MARK: Details
 
     private var title: String {
@@ -193,5 +167,57 @@ struct ItemRow: View {
         if let size = item.pixelSize { parts.append("\(size.width) × \(size.height)") }
         if let name = item.files.first?.name { parts.append(name) }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// The right-click / long-press menu, kept as its own view so the row body stays small.
+struct ItemRowMenu: View {
+    let item: Item
+    @ObservedObject var library: Library
+    var onOpen: () -> Void
+    var onEditCaption: () -> Void
+    var onShare: () -> Void
+    var onPreview: () -> Void
+
+    var body: some View {
+        Button { library.copy(item) } label: { Label("Copy", systemImage: "doc.on.doc") }
+        Button { onOpen() } label: { Label("Show Details", systemImage: "info.circle") }
+        if item.kind == .link, let url = item.link.flatMap({ URL(string: $0.url) }) {
+            Button { UIApplication.shared.open(url) } label: { Label("Open Link", systemImage: "arrow.up.right") }
+        }
+        if !library.shareItems(for: item).isEmpty {
+            Button { onShare() } label: { Label("Share", systemImage: "square.and.arrow.up") }
+        }
+        if item.kind == .image || item.kind == .pdf || !item.files.isEmpty {
+            Button { onPreview() } label: { Label("Quick Look", systemImage: "eye") }
+        }
+        Button { library.togglePin(item) } label: {
+            Label(item.pinned ? "Unpin" : "Pin", systemImage: item.pinned ? "pin.slash" : "pin")
+        }
+        if item.supportsCaption {
+            Button { onEditCaption() } label: {
+                Label(item.caption == nil ? "Add Caption" : "Edit Caption", systemImage: "text.bubble")
+            }
+        }
+        Divider()
+        Button(role: .destructive) { library.delete(item) } label: { Label("Delete", systemImage: "trash") }
+    }
+}
+
+struct ItemRowAccessibility: ViewModifier {
+    let item: Item
+    @ObservedObject var library: Library
+    var onOpen: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(item.kind.label), \(item.headline), \(IOSDate.short(item.createdAt))")
+            .accessibilityHint("Copies to the clipboard")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: "Copy") { library.copy(item) }
+            .accessibilityAction(named: "Show Details") { onOpen() }
+            .accessibilityAction(named: item.pinned ? "Unpin" : "Pin") { library.togglePin(item) }
+            .accessibilityAction(named: "Delete") { library.delete(item) }
     }
 }

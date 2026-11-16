@@ -22,6 +22,8 @@ targets:
         product: StickyCore
       - target: StickyThingsWidgets
         embed: true
+      - target: StickyThingsHomeWidget
+        embed: true
       - target: StickyThingsShare
         embed: true
     settings:
@@ -83,12 +85,37 @@ targets:
         APPLICATION_EXTENSION_API_ONLY: YES
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "5.0"
+  StickyThingsHomeWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Sources/StickyThingsWidget
+      - path: Sources/Shared
+    dependencies:
+      - package: StickyCore
+        product: StickyCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.stickythings.StickyThings.HomeWidget
+        PRODUCT_NAME: StickyThingsHomeWidget
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Resources/StickyWidget-Info.plist
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: Resources/Widgets.entitlements
+        DEVELOPMENT_TEAM: ""
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
 schemes:
   StickyThings:
     build:
       targets:
         StickyThings: all
         StickyThingsWidgets: all
+        StickyThingsHomeWidget: all
         StickyThingsShare: all
     run:
       config: Debug
