@@ -27,6 +27,7 @@
 		CAE22FD227DBF94F52149847 /* IOSTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38BE2BE770E4EAD3F7AA0CF1 /* IOSTheme.swift */; };
 		DC606D132D0661D4AA290626 /* StickyIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C851AE2661F78E38BCEE9AF /* StickyIntents.swift */; };
 		E7178596A32BFDB7F5D3C436 /* StickyThingsWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1E3868782ED199ACB62E04BC /* StickyThingsWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		ED6ACF719C1C2AE01F114137 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 08B9AB7999C490C6415F85AC /* Assets.xcassets */; };
 		EDF8750DC0634A427A315118 /* NewStickyThingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 615354D0F5CEF805F94C8CAB /* NewStickyThingControl.swift */; };
 		EF743F50A7F905F7B28E426D /* ItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB4697C5ECF0CF111738192C /* ItemRow.swift */; };
 		F2AB0315D5AA775C550E9DF3 /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742B7FFFF3B205BD16630F01 /* Library.swift */; };
@@ -76,6 +77,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		08B9AB7999C490C6415F85AC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		136A1C65FF14CE46C62AA316 /* SpotlightIndexer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightIndexer.swift; sourceTree = "<group>"; };
 		1C8D52584524776A35E5B677 /* QuickCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureView.swift; sourceTree = "<group>"; };
 		1E3868782ED199ACB62E04BC /* StickyThingsWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = StickyThingsWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -176,9 +178,18 @@
 			isa = PBXGroup;
 			children = (
 				32928E946DC37350E832C82F /* Packages */,
+				B66DDBD6B30061E1AFE1C2F0 /* Resources */,
 				F867EFAAF69FFE3A5961F961 /* Sources */,
 				8F70BBB3CED07D4C26F148BF /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		B66DDBD6B30061E1AFE1C2F0 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				08B9AB7999C490C6415F85AC /* Assets.xcassets */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		BBAF5DE77A012E6F5C2A125D /* StickyThingsWidgets */ = {
@@ -266,6 +277,7 @@
 			buildConfigurationList = 4F5970F8B269A60E8CD9FB79 /* Build configuration list for PBXNativeTarget "StickyThings" */;
 			buildPhases = (
 				41ECC9D0073248BA1F5EEC1B /* Sources */,
+				D8B0969DD7FB68AEAF61C758 /* Resources */,
 				FA3A67C0DA5BF8A00C58D320 /* Frameworks */,
 				CD5E1EAD2D7AB568A5901237 /* Embed Foundation Extensions */,
 			);
@@ -354,6 +366,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D8B0969DD7FB68AEAF61C758 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ED6ACF719C1C2AE01F114137 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		41ECC9D0073248BA1F5EEC1B /* Sources */ = {

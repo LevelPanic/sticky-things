@@ -334,11 +334,19 @@ struct StickyWidgetView: View {
                 }
             }
             Spacer(minLength: 4)
-            Text(item.createdAt, style: .relative)
+            Text(relativeText(item.createdAt))
                 .font(.caption2)
                 .foregroundStyle(WidgetTheme.secondaryInk)
                 .lineLimit(1)
         }
+    }
+
+    private func relativeText(_ date: Date) -> String {
+        let seconds = max(0, Date().timeIntervalSince(date))
+        if seconds < 60 { return "now" }
+        if seconds < 3600 { return "\(Int(seconds / 60))m" }
+        if seconds < 86_400 { return "\(Int(seconds / 3600))h" }
+        return "\(Int(seconds / 86_400))d"
     }
 
     private func itemIcon(_ item: StickyWidgetItem) -> some View {

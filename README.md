@@ -24,13 +24,13 @@ The iPhone app is designed around the places iOS already gives you for a five-se
 |---|---|---|
 | <img src="docs/panel-light.png" width="250" alt="Light Mac panel with notes, links and an image caption"> | <img src="docs/panel-dark.png" width="250" alt="Dark Mac panel with the same stack"> | <img src="docs/ios-list.png" width="210" alt="iPhone library with notes, links and an image"> |
 
-| iPhone, quick capture | iPhone, item detail | macOS, captions |
+| iPhone, quick capture | iPhone, item detail | iPhone, widget |
 |---|---|---|
-| <img src="docs/ios-capture.png" width="210" alt="Quick capture sheet on iPhone"> | <img src="docs/ios-detail.png" width="210" alt="Item detail on iPhone"> | <img src="docs/caption-light.png" width="250" alt="Editing a caption on an image"> |
+| <img src="docs/ios-capture.png" width="210" alt="Quick capture sheet on iPhone"> | <img src="docs/ios-detail.png" width="210" alt="Item detail on iPhone"> | <img src="docs/ios-widget.png" width="210" alt="Sticky Things Home Screen widget on iPhone"> |
 
-| macOS, corner behavior | macOS, empty |
-|---|---|
-| <img src="docs/settings-corner.png" width="420" alt="Corner settings with drag delay and trigger area"> | <img src="docs/empty-light.png" width="250" alt="Empty Mac panel with onboarding tips"> |
+| macOS, captions | macOS, corner behavior | macOS, empty |
+|---|---|---|
+| <img src="docs/caption-light.png" width="250" alt="Editing a caption on an image"> | <img src="docs/settings-corner.png" width="250" alt="Corner settings with drag delay and trigger area"> | <img src="docs/empty-light.png" width="250" alt="Empty Mac panel with onboarding tips"> |
 
 <sub>Mac renders are offscreen snapshots. The installed Mac app draws its panel on real system glass. iPhone screenshots are from the simulator.</sub>
 

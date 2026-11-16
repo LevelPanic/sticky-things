@@ -15,7 +15,6 @@ targets:
     sources:
       - path: Sources/StickyThingsIOS
       - path: Sources/Shared
-    resources:
       - path: Resources/Assets.xcassets
     dependencies:
       - package: StickyCore

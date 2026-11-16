@@ -7,6 +7,7 @@ A native iOS companion to the Mac app. The idea is not to shrink the Mac panel o
   <img src="../../docs/ios-empty.png" width="200" alt="iPhone empty state">
   <img src="../../docs/ios-capture.png" width="200" alt="iPhone quick capture">
   <img src="../../docs/ios-detail.png" width="200" alt="iPhone item detail">
+  <img src="../../docs/ios-widget.png" width="200" alt="Home Screen widget">
 </p>
 
 
