@@ -163,3 +163,7 @@ Known limits:
 Built by **Muhtasham Nawaz**.
 
 Inspired by [StickyEdges](https://github.com/utsavg05/StickyEdges), and by every note that got lost in a browser tab.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
